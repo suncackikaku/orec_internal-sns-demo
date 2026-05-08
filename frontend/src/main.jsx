@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 import WelcomePage from './pages/WelcomePage'
 import DepartmentPage from './pages/DepartmentPage'
 import DepartmentsListPage from './pages/DepartmentsListPage'
+import UsersListPage from './pages/UsersListPage'
 import UserProfilePage from './pages/UserProfilePage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
@@ -45,6 +46,13 @@ function App() {
           <Route path="/departments/:id" element={
             <PrivateRoute>
               <DepartmentPage />
+            </PrivateRoute>
+          } />
+          
+          {/* 社員一覧 */}
+          <Route path="/users" element={
+            <PrivateRoute>
+              <UsersListPage />
             </PrivateRoute>
           } />
           

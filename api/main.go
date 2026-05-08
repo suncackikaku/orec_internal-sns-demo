@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -123,6 +124,37 @@ type UpdateProfileRequest struct {
 	ProfileImageURL string `json:"profile_image_url"`
 }
 
+type SearchResult struct {
+	Users       []SearchUser       `json:"users"`
+	Departments []SearchDepartment `json:"departments"`
+	Posts       []SearchPost       `json:"posts"`
+}
+
+type SearchUser struct {
+	ID              string `json:"id" db:"id"`
+	DisplayName     string `json:"display_name" db:"display_name"`
+	DepartmentName  string `json:"department_name" db:"department_name"`
+	ProfileImageURL string `json:"profile_image_url" db:"profile_image_url"`
+	MatchedField    string `json:"matched_field" db:"matched_field"`
+	MatchedText     string `json:"matched_text" db:"matched_text"`
+}
+
+type SearchDepartment struct {
+	ID            string `json:"id" db:"id"`
+	Name          string `json:"name" db:"name"`
+	Catchcopy     string `json:"catchcopy" db:"catchcopy"`
+	CoverImageURL string `json:"cover_image_url" db:"cover_image_url"`
+	MatchedField  string `json:"matched_field" db:"matched_field"`
+}
+
+type SearchPost struct {
+	ID          string    `json:"id" db:"id"`
+	AuthorName  string    `json:"author_name" db:"author_name"`
+	Body        string    `json:"body" db:"body"`
+	CreatedAt   time.Time `json:"created_at" db:"created_at"`
+	MatchedText string    `json:"matched_text" db:"matched_text"`
+}
+
 var db *sqlx.DB
 var authenticator *auth.LocalAuthenticator
 
@@ -168,6 +200,8 @@ func main() {
 		r.Use(authMiddleware)
 		r.Get("/api/auth/me", getMeHandler)
 		r.Put("/api/users/me/profile", updateProfileHandler)
+		r.Get("/api/search", searchHandler)
+		r.Get("/api/users", getUsersList)
 	})
 
 	port := os.Getenv("PORT")
@@ -412,4 +446,173 @@ func getUserProfile(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(profile)
+}
+
+func searchHandler(w http.ResponseWriter, r *http.Request) {
+	keyword := r.URL.Query().Get("q")
+	if keyword == "" {
+		http.Error(w, "検索キーワードを入力してください", http.StatusBadRequest)
+		return
+	}
+
+	likeKeyword := "%" + keyword + "%"
+	result := SearchResult{}
+
+	// 社員検索
+	var users []SearchUser
+	err := db.Select(&users, `
+		SELECT u.id, u.display_name, d.name as department_name, up.profile_image_url,
+			CASE 
+				WHEN u.display_name ILIKE $1 THEN 'name'
+				WHEN up.skills ILIKE $1 THEN 'skills'
+				WHEN up.hobbies ILIKE $1 THEN 'hobbies'
+				WHEN up.bio ILIKE $1 THEN 'bio'
+				ELSE 'other'
+			END as matched_field,
+			COALESCE(up.skills, up.hobbies, up.bio, u.display_name) as matched_text
+		FROM users u
+		LEFT JOIN user_profiles up ON u.id = up.user_id
+		LEFT JOIN departments d ON u.primary_department_id = d.id
+		WHERE u.display_name ILIKE $1 
+			OR up.skills ILIKE $1 
+			OR up.hobbies ILIKE $1 
+			OR up.bio ILIKE $1
+		ORDER BY u.created_at DESC
+		LIMIT 10`, likeKeyword)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	result.Users = users
+
+	// 部署検索
+	var departments []SearchDepartment
+	err = db.Select(&departments, `
+		SELECT id, name, catchcopy, cover_image_url,
+			CASE 
+				WHEN name ILIKE $1 THEN 'name'
+				WHEN catchcopy ILIKE $1 THEN 'catchcopy'
+				ELSE 'description'
+			END as matched_field
+		FROM departments
+		WHERE name ILIKE $1 
+			OR catchcopy ILIKE $1 
+			OR description ILIKE $1
+		ORDER BY name
+		LIMIT 10`, likeKeyword)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	result.Departments = departments
+
+	// 投稿検索
+	var posts []SearchPost
+	err = db.Select(&posts, `
+		SELECT p.id, u.display_name as author_name, p.body, p.created_at,
+			p.body as matched_text
+		FROM posts p
+		JOIN users u ON p.author_id = u.id
+		WHERE p.body ILIKE $1
+		ORDER BY p.created_at DESC
+		LIMIT 10`, likeKeyword)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	result.Posts = posts
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}
+
+type UsersListResponse struct {
+	Users      []UserListItem `json:"users"`
+	TotalCount int            `json:"total_count"`
+	Page       int            `json:"page"`
+	PerPage    int            `json:"per_page"`
+}
+
+type UserListItem struct {
+	ID              string `json:"id" db:"id"`
+	DisplayName     string `json:"display_name" db:"display_name"`
+	DepartmentName  string `json:"department_name" db:"department_name"`
+	ProfileImageURL string `json:"profile_image_url" db:"profile_image_url"`
+}
+
+func getUsersList(w http.ResponseWriter, r *http.Request) {
+	page := 1
+	perPage := 12
+
+	if p := r.URL.Query().Get("page"); p != "" {
+		if parsed, err := strconv.Atoi(p); err == nil && parsed > 0 {
+			page = parsed
+		}
+	}
+
+	if pp := r.URL.Query().Get("per_page"); pp != "" {
+		if parsed, err := strconv.Atoi(pp); err == nil && parsed > 0 {
+			perPage = parsed
+		}
+	}
+
+	departmentID := r.URL.Query().Get("department_id")
+	searchKeyword := r.URL.Query().Get("q")
+
+	offset := (page - 1) * perPage
+
+	// Build query
+	whereClause := "WHERE 1=1"
+	args := []interface{}{}
+	argCount := 0
+
+	if departmentID != "" {
+		argCount++
+		whereClause += fmt.Sprintf(" AND u.primary_department_id = $%d", argCount)
+		args = append(args, departmentID)
+	}
+
+	if searchKeyword != "" {
+		argCount++
+		whereClause += fmt.Sprintf(" AND (u.display_name ILIKE $%d OR up.bio ILIKE $%d OR up.skills ILIKE $%d OR up.hobbies ILIKE $%d)", argCount, argCount, argCount, argCount)
+		args = append(args, "%"+searchKeyword+"%")
+	}
+
+	// Get total count
+	var totalCount int
+	countQuery := "SELECT COUNT(*) FROM users u LEFT JOIN user_profiles up ON u.id = up.user_id " + whereClause
+	err := db.Get(&totalCount, countQuery, args...)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Get users
+	argCount++
+	limitOffset := fmt.Sprintf(" ORDER BY u.display_name LIMIT $%d OFFSET $%d", argCount, argCount+1)
+	args = append(args, perPage, offset)
+
+	var users []UserListItem
+	query := `
+		SELECT u.id, u.display_name, d.name as department_name, up.profile_image_url
+		FROM users u
+		LEFT JOIN user_profiles up ON u.id = up.user_id
+		LEFT JOIN departments d ON u.primary_department_id = d.id
+	` + whereClause + limitOffset
+
+	err = db.Select(&users, query, args...)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	response := UsersListResponse{
+		Users:      users,
+		TotalCount: totalCount,
+		Page:       page,
+		PerPage:    perPage,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }

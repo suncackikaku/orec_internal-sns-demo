@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import SearchResults from '../components/SearchResults'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
 function WelcomePage() {
-  const { user, logout, getAuthHeaders } = useAuth()
+  const { user, getAuthHeaders } = useAuth()
   const navigate = useNavigate()
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [searchKeyword, setSearchKeyword] = useState('')
+  const [showResults, setShowResults] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -30,6 +33,18 @@ function WelcomePage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleSearch = (e) => {
+    e.preventDefault()
+    if (searchKeyword.trim()) {
+      setShowResults(true)
+    }
+  }
+
+  const handleClearSearch = () => {
+    setSearchKeyword('')
+    setShowResults(false)
   }
 
   if (loading) {
@@ -66,6 +81,45 @@ function WelcomePage() {
 
       {/* メインコンテンツ - ダッシュボード */}
       <main style={styles.main}>
+        {/* 検索バー */}
+        <form onSubmit={handleSearch} style={styles.searchForm}>
+          <div style={styles.searchContainer}>
+            <span style={styles.searchIcon}>🔍</span>
+            <input
+              type="text"
+              value={searchKeyword}
+              onChange={(e) => {
+                setSearchKeyword(e.target.value)
+                if (!e.target.value.trim()) {
+                  setShowResults(false)
+                }
+              }}
+              placeholder="社員、部署、投稿を検索..."
+              style={styles.searchInput}
+            />
+            {searchKeyword && (
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                style={styles.clearButton}
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          <button type="submit" style={styles.searchButton}>
+            検索
+          </button>
+        </form>
+
+        {/* 検索結果 */}
+        {showResults && (
+          <SearchResults
+            keyword={searchKeyword}
+            onClear={handleClearSearch}
+          />
+        )}
+
         <h1 style={styles.welcomeTitle}>
           ようこそ、{user?.display_name}さん
         </h1>
@@ -84,15 +138,15 @@ function WelcomePage() {
             </p>
           </div>
 
-          {/* 所属部署 */}
+          {/* 社員一覧 */}
           <div
             style={styles.menuCard}
-            onClick={() => navigate(`/departments/${user?.primary_department_id}`)}
+            onClick={() => navigate('/users')}
           >
-            <div style={styles.menuIcon}>🎯</div>
-            <h3 style={styles.menuTitle}>所属部署</h3>
+            <div style={styles.menuIcon}>👥</div>
+            <h3 style={styles.menuTitle}>社員一覧</h3>
             <p style={styles.menuDescription}>
-              自分の所属部署ページへ移動します
+              全社の社員を閲覧します
             </p>
           </div>
         </div>
@@ -161,6 +215,50 @@ const styles = {
   },
   main: {
     padding: '24px 16px',
+  },
+  searchForm: {
+    display: 'flex',
+    gap: '8px',
+    marginBottom: '24px',
+  },
+  searchContainer: {
+    flex: 1,
+    display: 'flex',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: '8px',
+    padding: '8px 12px',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+  },
+  searchIcon: {
+    fontSize: '18px',
+    marginRight: '8px',
+    color: '#666',
+  },
+  searchInput: {
+    flex: 1,
+    border: 'none',
+    outline: 'none',
+    fontSize: '16px',
+    padding: '4px',
+  },
+  clearButton: {
+    backgroundColor: 'transparent',
+    border: 'none',
+    color: '#999',
+    cursor: 'pointer',
+    fontSize: '16px',
+    padding: '4px',
+  },
+  searchButton: {
+    padding: '10px 20px',
+    backgroundColor: '#1976d2',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '16px',
+    cursor: 'pointer',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
   },
   welcomeTitle: {
     fontSize: '24px',
