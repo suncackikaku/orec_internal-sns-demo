@@ -1,0 +1,415 @@
+package main
+
+import (
+	"context"
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"strings"
+	"time"
+
+	"api/auth"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
+)
+
+// DBAuth implements auth.DBInterface
+type DBAuth struct {
+	db *sqlx.DB
+}
+
+func (d *DBAuth) GetUserByEmail(email string) (*auth.User, error) {
+	var user auth.User
+	err := d.db.Get(&user, `
+		SELECT id, display_name, email, primary_department_id 
+		FROM users 
+		WHERE email = $1 AND auth_provider = 'local'`, email)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, auth.ErrUserNotFound
+		}
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (d *DBAuth) GetUserByID(id string) (*auth.User, error) {
+	var user auth.User
+	err := d.db.Get(&user, `
+		SELECT id, display_name, email, primary_department_id 
+		FROM users 
+		WHERE id = $1`, id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, auth.ErrUserNotFound
+		}
+		return nil, err
+	}
+	return &user, nil
+}
+
+type Department struct {
+	ID            string         `json:"id" db:"id"`
+	Name          string         `json:"name" db:"name"`
+	Catchcopy     string         `json:"catchcopy" db:"catchcopy"`
+	Description   string         `json:"description" db:"description"`
+	CoverImageURL string         `json:"cover_image_url" db:"cover_image_url"`
+	ManagerUserID sql.NullString `json:"manager_user_id" db:"manager_user_id"`
+}
+
+type User struct {
+	ID                  string `json:"id" db:"id"`
+	DisplayName         string `json:"display_name" db:"display_name"`
+	PrimaryDepartmentID string `json:"primary_department_id" db:"primary_department_id"`
+	ProfileImageURL     string `json:"profile_image_url" db:"profile_image_url"`
+}
+
+type UserProfile struct {
+	UserID          string `json:"user_id" db:"user_id"`
+	DisplayName     string `json:"display_name" db:"display_name"`
+	Email           string `json:"email" db:"email"`
+	Bio             string `json:"bio" db:"bio"`
+	Hobbies         string `json:"hobbies" db:"hobbies"`
+	Skills          string `json:"skills" db:"skills"`
+	JoinedYear      int    `json:"joined_year" db:"joined_year"`
+	CareerHistory   string `json:"career_history" db:"career_history"`
+	ProfileImageURL string `json:"profile_image_url" db:"profile_image_url"`
+	DepartmentName  string `json:"department_name" db:"department_name"`
+}
+
+type Post struct {
+	ID         string    `json:"id" db:"id"`
+	AuthorID   string    `json:"author_id" db:"author_id"`
+	AuthorName string    `json:"author_name" db:"author_name"`
+	Body       string    `json:"body" db:"body"`
+	CreatedAt  time.Time `json:"created_at" db:"created_at"`
+}
+
+type DepartmentResponse struct {
+	Department Department `json:"department"`
+	Members    []User     `json:"members"`
+	Posts      []Post     `json:"posts"`
+}
+
+type RegisterRequest struct {
+	DisplayName  string `json:"display_name"`
+	Email        string `json:"email"`
+	Password     string `json:"password"`
+	DepartmentID string `json:"department_id"`
+}
+
+type LoginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type AuthResponse struct {
+	Token string    `json:"token"`
+	User  auth.User `json:"user"`
+}
+
+type UpdateProfileRequest struct {
+	Bio             string `json:"bio"`
+	Hobbies         string `json:"hobbies"`
+	Skills          string `json:"skills"`
+	CareerHistory   string `json:"career_history"`
+	ProfileImageURL string `json:"profile_image_url"`
+}
+
+var db *sqlx.DB
+var authenticator *auth.LocalAuthenticator
+
+func main() {
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		databaseURL = "postgres://snsuser:snspassword@localhost:5432/snsdb?sslmode=disable"
+	}
+
+	var err error
+	db, err = sqlx.Connect("postgres", databaseURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	// Initialize authenticator
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		jwtSecret = "your-secret-key-change-in-production"
+	}
+	dbAuth := &DBAuth{db: db}
+	authenticator = auth.NewLocalAuthenticator(jwtSecret, dbAuth)
+
+	r := chi.NewRouter()
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins: []string{"*"},
+		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders: []string{"*"},
+	}))
+
+	// Public routes
+	r.Post("/api/auth/register", registerHandler)
+	r.Post("/api/auth/login", loginHandler)
+	r.Get("/api/departments", getDepartmentsList)
+	r.Get("/api/departments/{deptId}", getDepartment)
+	r.Get("/api/users/{userId}/profile", getUserProfile)
+
+	// Protected routes
+	r.Group(func(r chi.Router) {
+		r.Use(authMiddleware)
+		r.Get("/api/auth/me", getMeHandler)
+		r.Put("/api/users/me/profile", updateProfileHandler)
+	})
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	fmt.Printf("Server starting on port %s\n", port)
+	log.Fatal(http.ListenAndServe(":"+port, r))
+}
+
+func authMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		tokenString := strings.Replace(authHeader, "Bearer ", "", 1)
+		user, err := authenticator.ValidateToken(tokenString)
+		if err != nil {
+			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			return
+		}
+
+		// Store user in context
+		ctx := r.Context()
+		ctx = context.WithValue(ctx, "user", user)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func registerHandler(w http.ResponseWriter, r *http.Request) {
+	var req RegisterRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Hash password
+	hash, err := authenticator.HashPassword(req.Password)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Insert user
+	var userID string
+	err = db.QueryRow(`
+		INSERT INTO users (display_name, email, password_hash, auth_provider, primary_department_id)
+		VALUES ($1, $2, $3, 'local', $4)
+		RETURNING id`,
+		req.DisplayName, req.Email, hash, req.DepartmentID).Scan(&userID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Create empty profile
+	_, err = db.Exec(`
+		INSERT INTO user_profiles (user_id)
+		VALUES ($1)`, userID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Get user and generate token
+	user, err := (&DBAuth{db: db}).GetUserByID(userID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	token, err := authenticator.GenerateToken(user)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(AuthResponse{Token: token, User: *user})
+}
+
+func loginHandler(w http.ResponseWriter, r *http.Request) {
+	var req LoginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Get user with password hash
+	var user struct {
+		auth.User
+		PasswordHash string `db:"password_hash"`
+	}
+	err := db.Get(&user, `
+		SELECT id, display_name, email, primary_department_id, password_hash
+		FROM users
+		WHERE email = $1 AND auth_provider = 'local'`, req.Email)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Check password
+	if !authenticator.CheckPassword(req.Password, user.PasswordHash) {
+		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		return
+	}
+
+	// Generate token
+	authUser := &auth.User{
+		ID:           user.ID,
+		DisplayName:  user.DisplayName,
+		Email:        user.Email,
+		DepartmentID: user.DepartmentID,
+	}
+	token, err := authenticator.GenerateToken(authUser)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(AuthResponse{Token: token, User: *authUser})
+}
+
+func getMeHandler(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value("user").(*auth.User)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(user)
+}
+
+func updateProfileHandler(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value("user").(*auth.User)
+
+	var req UpdateProfileRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Update user_profiles
+	_, err := db.Exec(`
+		UPDATE user_profiles
+		SET bio = $1, hobbies = $2, skills = $3, career_history = $4, profile_image_url = $5
+		WHERE user_id = $6`,
+		req.Bio, req.Hobbies, req.Skills, req.CareerHistory, req.ProfileImageURL, user.ID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Profile updated successfully"})
+}
+
+func getDepartmentsList(w http.ResponseWriter, r *http.Request) {
+	var departments []Department
+	err := db.Select(&departments, "SELECT * FROM departments ORDER BY name")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(departments)
+}
+
+func getDepartment(w http.ResponseWriter, r *http.Request) {
+	deptID := chi.URLParam(r, "deptId")
+
+	var dept Department
+	err := db.Get(&dept, "SELECT * FROM departments WHERE id = $1", deptID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Department not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var members []User
+	err = db.Select(&members, `
+		SELECT u.id, u.display_name, u.primary_department_id, up.profile_image_url 
+		FROM users u 
+		LEFT JOIN user_profiles up ON u.id = up.user_id 
+		WHERE u.primary_department_id = $1`, deptID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var posts []Post
+	err = db.Select(&posts, `
+		SELECT p.id, p.author_id, u.display_name as author_name, p.body, p.created_at 
+		FROM posts p 
+		JOIN users u ON p.author_id = u.id 
+		WHERE u.primary_department_id = $1 
+		ORDER BY p.created_at DESC`, deptID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	response := DepartmentResponse{
+		Department: dept,
+		Members:    members,
+		Posts:      posts,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func getUserProfile(w http.ResponseWriter, r *http.Request) {
+	userID := chi.URLParam(r, "userId")
+
+	var profile UserProfile
+	err := db.Get(&profile, `
+		SELECT u.id as user_id, u.display_name, u.email, up.bio, up.hobbies, up.skills, 
+			up.joined_year, up.career_history, up.profile_image_url, d.name as department_name 
+		FROM users u 
+		LEFT JOIN user_profiles up ON u.id = up.user_id 
+		LEFT JOIN departments d ON u.primary_department_id = d.id 
+		WHERE u.id = $1`, userID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "User not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(profile)
+}
