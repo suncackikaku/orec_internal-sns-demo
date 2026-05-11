@@ -17,10 +17,33 @@ function WelcomePage() {
   useEffect(() => {
     if (user) {
       fetchProfile()
-      fetchActivities()
-      // 30秒ごとにポーリング
-      const interval = setInterval(fetchActivities, 30000)
-      return () => clearInterval(interval)
+      // SSE接続を確立（トークンをクエリパラメータで送信）
+      const token = localStorage.getItem('token')
+      const eventSource = new EventSource(`${API_URL}/activities/stream?token=${token}`)
+      
+      eventSource.onmessage = (event) => {
+        try {
+          const newActivity = JSON.parse(event.data)
+          setActivities(prev => {
+            // 重複を避ける
+            if (prev.find(a => a.id === newActivity.id)) {
+              return prev
+            }
+            return [newActivity, ...prev].slice(0, 10)
+          })
+        } catch (err) {
+          console.error('Failed to parse activity:', err)
+        }
+      }
+      
+      eventSource.onerror = (err) => {
+        console.error('SSE error:', err)
+        eventSource.close()
+      }
+      
+      return () => {
+        eventSource.close()
+      }
     }
   }, [user])
 
@@ -37,20 +60,6 @@ function WelcomePage() {
       console.error('Failed to fetch profile:', err)
     } finally {
       setLoading(false)
-    }
-  }
-
-  const fetchActivities = async () => {
-    try {
-      const res = await fetch(`${API_URL}/activities`, {
-        headers: getAuthHeaders()
-      })
-      if (res.ok) {
-        const data = await res.json()
-        setActivities(data)
-      }
-    } catch (err) {
-      console.error('Failed to fetch activities:', err)
     }
   }
 

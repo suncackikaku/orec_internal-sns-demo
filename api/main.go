@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"api/auth"
@@ -167,6 +168,11 @@ type Activity struct {
 var db *sqlx.DB
 var authenticator *auth.LocalAuthenticator
 
+// ActivityChannel for SSE broadcasting
+var activityChannel = make(chan Activity, 100)
+var activityClients = make(map[chan Activity]bool)
+var activityClientsMutex sync.Mutex
+
 func main() {
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
@@ -212,6 +218,7 @@ func main() {
 		r.Get("/api/search", searchHandler)
 		r.Get("/api/users", getUsersList)
 		r.Get("/api/activities", getActivitiesHandler)
+		r.Get("/api/activities/stream", activitiesStreamHandler)
 	})
 
 	port := os.Getenv("PORT")
@@ -225,13 +232,22 @@ func main() {
 
 func authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var tokenString string
+
+		// Try Authorization header first
 		authHeader := r.Header.Get("Authorization")
-		if authHeader == "" {
+		if authHeader != "" {
+			tokenString = strings.Replace(authHeader, "Bearer ", "", 1)
+		} else {
+			// Fallback to query parameter for SSE
+			tokenString = r.URL.Query().Get("token")
+		}
+
+		if tokenString == "" {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
-		tokenString := strings.Replace(authHeader, "Bearer ", "", 1)
 		user, err := authenticator.ValidateToken(tokenString)
 		if err != nil {
 			http.Error(w, "Invalid token", http.StatusUnauthorized)
@@ -665,5 +681,88 @@ func createActivity(actorID string, activityType string, message string) error {
 		INSERT INTO activities (actor_id, type, message)
 		VALUES ($1, $2, $3)`,
 		actorID, activityType, message)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Fetch the created activity with actor name
+	var activity Activity
+	err = db.Get(&activity, `
+		SELECT a.id, a.actor_id, u.display_name as actor_name, a.type, a.message, a.created_at
+		FROM activities a
+		JOIN users u ON a.actor_id = u.id
+		WHERE a.actor_id = $1
+		ORDER BY a.created_at DESC
+		LIMIT 1`, actorID)
+	if err != nil {
+		return err
+	}
+
+	// Broadcast to all connected clients
+	activityClientsMutex.Lock()
+	defer activityClientsMutex.Unlock()
+	for client := range activityClients {
+		select {
+		case client <- activity:
+		default:
+			// Client buffer full, skip
+		}
+	}
+
+	return nil
+}
+
+func activitiesStreamHandler(w http.ResponseWriter, r *http.Request) {
+	// Set headers for SSE
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	// Create a client channel
+	client := make(chan Activity, 10)
+
+	// Register client
+	activityClientsMutex.Lock()
+	activityClients[client] = true
+	activityClientsMutex.Unlock()
+
+	// Unregister client when connection closes
+	defer func() {
+		activityClientsMutex.Lock()
+		delete(activityClients, client)
+		activityClientsMutex.Unlock()
+		close(client)
+	}()
+
+	// Send initial activities
+	var activities []Activity
+	err := db.Select(&activities, `
+		SELECT a.id, a.actor_id, u.display_name as actor_name, a.type, a.message, a.created_at
+		FROM activities a
+		JOIN users u ON a.actor_id = u.id
+		ORDER BY a.created_at DESC
+		LIMIT 10`)
+	if err == nil {
+		for i := len(activities) - 1; i >= 0; i-- {
+			activityJSON, _ := json.Marshal(activities[i])
+			fmt.Fprintf(w, "data: %s\n\n", activityJSON)
+		}
+		w.(http.Flusher).Flush()
+	}
+
+	// Listen for new activities
+	for {
+		select {
+		case activity := <-client:
+			activityJSON, err := json.Marshal(activity)
+			if err != nil {
+				continue
+			}
+			fmt.Fprintf(w, "data: %s\n\n", activityJSON)
+			w.(http.Flusher).Flush()
+		case <-r.Context().Done():
+			return
+		}
+	}
 }
