@@ -73,36 +73,48 @@ function DepartmentPage() {
 
       <div style={styles.content}>
         {activeTab === 'members' ? (
-          <div style={styles.memberList}>
-            {members.map(member => (
-              <div 
-                key={member.id} 
-                style={styles.memberCard}
-                onClick={() => navigate(`/users/${member.id}/profile`)}
-              >
-                <img 
-                  src={member.profile_image_url || 'https://via.placeholder.com/60'} 
-                  alt={member.display_name}
-                  style={styles.memberAvatar}
-                />
-                <span style={styles.memberName}>{member.display_name}</span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div style={styles.feed}>
-            {posts.map(post => (
-              <div key={post.id} style={styles.postCard}>
-                <div style={styles.postHeader}>
-                  <strong>{post.author_name}</strong>
-                  <span style={styles.postDate}>
-                    {new Date(post.created_at).toLocaleDateString('ja-JP')}
-                  </span>
+          (members || []).length > 0 ? (
+            <div style={styles.memberList}>
+              {(members || []).map(member => (
+                <div 
+                  key={member.id} 
+                  style={styles.memberCard}
+                  onClick={() => navigate(`/users/${member.id}/profile`)}
+                >
+                  <img 
+                    src={member.profile_image_url || 'https://via.placeholder.com/60'} 
+                    alt={member.display_name}
+                    style={styles.memberAvatar}
+                  />
+                  <span style={styles.memberName}>{member.display_name}</span>
                 </div>
-                <p style={styles.postBody}>{post.body}</p>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div style={styles.emptyState}>
+              <p>メンバーがいません</p>
+            </div>
+          )
+        ) : (
+          (posts || []).length > 0 ? (
+            <div style={styles.feed}>
+              {(posts || []).map(post => (
+                <div key={post.id} style={styles.postCard}>
+                  <div style={styles.postHeader}>
+                    <strong>{post.author_name}</strong>
+                    <span style={styles.postDate}>
+                      {new Date(post.created_at).toLocaleDateString('ja-JP')}
+                    </span>
+                  </div>
+                  <p style={styles.postBody}>{post.body}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={styles.emptyState}>
+              <p>投稿がありません</p>
+            </div>
+          )
         )}
       </div>
     </div>
@@ -223,6 +235,12 @@ const styles = {
     textAlign: 'center',
     padding: '40px',
     color: '#d32f2f',
+  },
+  emptyState: {
+    textAlign: 'center',
+    padding: '40px',
+    color: '#666',
+    fontSize: '16px',
   },
 }
 
