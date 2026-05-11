@@ -39,6 +39,26 @@ CREATE TABLE posts (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE activities (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    actor_id UUID REFERENCES users(id),
+    type VARCHAR(50) NOT NULL,
+    message TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- users.updated_at を自動更新するトリガー
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 -- Insert seed data
 INSERT INTO departments (id, name, catchcopy, description, cover_image_url, manager_user_id) VALUES
 ('11111111-1111-1111-1111-111111111111', '技術開発部', '未来を創る技術力', '最先端の技術で製品開発を行う部署です。AI、クラウド、IoTなど幅広い技術領域をカバーしています。', 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=800', NULL),

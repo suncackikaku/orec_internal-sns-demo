@@ -12,10 +12,15 @@ function WelcomePage() {
   const [loading, setLoading] = useState(true)
   const [searchKeyword, setSearchKeyword] = useState('')
   const [showResults, setShowResults] = useState(false)
+  const [activities, setActivities] = useState([])
 
   useEffect(() => {
     if (user) {
       fetchProfile()
+      fetchActivities()
+      // 30秒ごとにポーリング
+      const interval = setInterval(fetchActivities, 30000)
+      return () => clearInterval(interval)
     }
   }, [user])
 
@@ -33,6 +38,35 @@ function WelcomePage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const fetchActivities = async () => {
+    try {
+      const res = await fetch(`${API_URL}/activities`, {
+        headers: getAuthHeaders()
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setActivities(data)
+      }
+    } catch (err) {
+      console.error('Failed to fetch activities:', err)
+    }
+  }
+
+  const formatTimeAgo = (dateString) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffMs = now - date
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMs / 3600000)
+    const diffDays = Math.floor(diffMs / 86400000)
+
+    if (diffMins < 1) return 'たった今'
+    if (diffMins < 60) return `${diffMins}分前`
+    if (diffHours < 24) return `${diffHours}時間前`
+    if (diffDays < 7) return `${diffDays}日前`
+    return date.toLocaleDateString('ja-JP')
   }
 
   const handleSearch = (e) => {
@@ -156,6 +190,21 @@ function WelcomePage() {
           <div style={styles.bioSection}>
             <h3 style={styles.bioTitle}>一言メッセージ</h3>
             <p style={styles.bioText}>{profile.bio}</p>
+          </div>
+        )}
+
+        {/* お知らせ */}
+        {(activities?.length || 0) > 0 && (
+          <div style={styles.activitiesSection}>
+            <h3 style={styles.activitiesTitle}>📢 お知らせ</h3>
+            <div style={styles.activitiesList}>
+              {activities.map(activity => (
+                <div key={activity.id} style={styles.activityItem}>
+                  <div style={styles.activityMessage}>{activity.message}</div>
+                  <div style={styles.activityTime}>{formatTimeAgo(activity.created_at)}</div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </main>
@@ -302,6 +351,7 @@ const styles = {
     borderRadius: '8px',
     boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
     textAlign: 'center',
+    marginBottom: '24px',
   },
   bioTitle: {
     fontSize: '16px',
@@ -314,6 +364,38 @@ const styles = {
     color: '#333',
     fontStyle: 'italic',
     margin: 0,
+  },
+  activitiesSection: {
+    backgroundColor: '#fff',
+    padding: '20px',
+    borderRadius: '8px',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+  },
+  activitiesTitle: {
+    fontSize: '18px',
+    fontWeight: 'bold',
+    marginBottom: '16px',
+    color: '#333',
+  },
+  activitiesList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+  },
+  activityItem: {
+    padding: '12px',
+    backgroundColor: '#f8f9fa',
+    borderRadius: '8px',
+    borderLeft: '4px solid #1976d2',
+  },
+  activityMessage: {
+    fontSize: '14px',
+    color: '#333',
+    marginBottom: '4px',
+  },
+  activityTime: {
+    fontSize: '12px',
+    color: '#888',
   },
   loading: {
     textAlign: 'center',

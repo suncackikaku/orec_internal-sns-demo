@@ -155,6 +155,15 @@ type SearchPost struct {
 	MatchedText string    `json:"matched_text" db:"matched_text"`
 }
 
+type Activity struct {
+	ID        string    `json:"id" db:"id"`
+	ActorID   string    `json:"actor_id" db:"actor_id"`
+	ActorName string    `json:"actor_name" db:"actor_name"`
+	Type      string    `json:"type" db:"type"`
+	Message   string    `json:"message" db:"message"`
+	CreatedAt time.Time `json:"created_at" db:"created_at"`
+}
+
 var db *sqlx.DB
 var authenticator *auth.LocalAuthenticator
 
@@ -202,6 +211,7 @@ func main() {
 		r.Put("/api/users/me/profile", updateProfileHandler)
 		r.Get("/api/search", searchHandler)
 		r.Get("/api/users", getUsersList)
+		r.Get("/api/activities", getActivitiesHandler)
 	})
 
 	port := os.Getenv("PORT")
@@ -268,6 +278,14 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	// Create activity for new user registration
+	activityMessage := fmt.Sprintf("%sさんが新規追加されました", req.DisplayName)
+	err = createActivity(userID, "user_registered", activityMessage)
+	if err != nil {
+		// Log error but don't fail registration
+		fmt.Printf("Failed to create activity: %v\n", err)
 	}
 
 	// Get user and generate token
@@ -359,6 +377,14 @@ func updateProfileHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	// Create activity for profile update
+	activityMessage := fmt.Sprintf("%sさんがプロフィールを更新しました", user.DisplayName)
+	err = createActivity(user.ID, "profile_update", activityMessage)
+	if err != nil {
+		// Log error but don't fail update
+		fmt.Printf("Failed to create activity: %v\n", err)
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -615,4 +641,29 @@ func getUsersList(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+
+func getActivitiesHandler(w http.ResponseWriter, r *http.Request) {
+	var activities []Activity
+	err := db.Select(&activities, `
+		SELECT a.id, a.actor_id, u.display_name as actor_name, a.type, a.message, a.created_at
+		FROM activities a
+		JOIN users u ON a.actor_id = u.id
+		ORDER BY a.created_at DESC
+		LIMIT 10`)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(activities)
+}
+
+func createActivity(actorID string, activityType string, message string) error {
+	_, err := db.Exec(`
+		INSERT INTO activities (actor_id, type, message)
+		VALUES ($1, $2, $3)`,
+		actorID, activityType, message)
+	return err
 }
