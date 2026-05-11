@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Separator } from '@/components/ui/separator'
+import { ArrowLeft, Edit, LogOut, User } from 'lucide-react'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
@@ -32,191 +38,117 @@ function UserProfilePage() {
       })
   }, [id])
 
-  if (loading) return <div style={styles.loading}>読み込み中...</div>
-  if (error) return <div style={styles.error}>エラー: {error}</div>
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-lg text-muted-foreground">読み込み中...</div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-lg text-destructive">エラー: {error}</div>
+      </div>
+    )
+  }
 
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        <button 
-          style={styles.backButton}
-          onClick={() => navigate(-1)}
-        >
-          ← 戻る
-        </button>
-      </div>
+    <div className="min-h-screen bg-background">
+      <div className="max-w-4xl mx-auto">
+        {/* ヘッダー */}
+        <div className="p-4 border-b">
+          <Button variant="ghost" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            戻る
+          </Button>
+        </div>
 
-      <div style={styles.profileHeader}>
-        <img 
-          src={profile.profile_image_url || 'https://via.placeholder.com/120'} 
-          alt={profile.display_name}
-          style={styles.avatar}
-        />
-        <h1 style={styles.name}>{profile.display_name}</h1>
-        <p style={styles.department}>{profile.department_name || '未所属'}</p>
-        <p style={styles.joinedYear}>入社年: {profile.joined_year || '不明'}年</p>
-        <p style={styles.bio}>{profile.bio}</p>
+        {/* プロフィールヘッダー */}
+        <div className="text-center py-8 px-4 bg-muted/50">
+          <Avatar className="h-32 w-32 mx-auto mb-4 border-4 border-background shadow-lg">
+            <AvatarImage src={profile.profile_image_url} alt={profile.display_name} />
+            <AvatarFallback className="text-4xl">
+              <User className="h-16 w-16" />
+            </AvatarFallback>
+          </Avatar>
+          
+          <h1 className="text-2xl font-bold mb-2">{profile.display_name}</h1>
+          <Badge variant="secondary" className="mb-2">
+            {profile.department_name || '未所属'}
+          </Badge>
+          <p className="text-sm text-muted-foreground mb-4">
+            入社年: {profile.joined_year || '不明'}年
+          </p>
+          {profile.bio && (
+            <p className="text-foreground italic max-w-md mx-auto">{profile.bio}</p>
+          )}
+          
+          {isMyProfile && (
+            <Button
+              className="mt-4"
+              onClick={() => navigate('/users/me/profile/edit')}
+            >
+              <Edit className="h-4 w-4 mr-2" />
+              プロフィールを編集
+            </Button>
+          )}
+        </div>
+
+        {/* 詳細情報 */}
+        <div className="p-4 space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-primary">趣味・関心</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-foreground">{profile.hobbies || '未設定'}</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-primary">得意なこと</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-foreground">{profile.skills || '未設定'}</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-primary">キャリア経歴</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <pre className="text-foreground whitespace-pre-wrap font-sans leading-relaxed">
+                {profile.career_history || '未設定'}
+              </pre>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* ログアウト */}
         {isMyProfile && (
-          <button
-            style={styles.editButton}
-            onClick={() => navigate('/users/me/profile/edit')}
-          >
-            プロフィールを編集
-          </button>
+          <div className="p-4 border-t">
+            <div className="max-w-xs mx-auto">
+              <Button
+                variant="destructive"
+                className="w-full"
+                onClick={() => {
+                  logout()
+                  navigate('/login')
+                }}
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                ログアウト
+              </Button>
+            </div>
+          </div>
         )}
       </div>
-
-      <div style={styles.details}>
-        <div style={styles.section}>
-          <h2 style={styles.sectionTitle}>趣味・関心</h2>
-          <p style={styles.sectionContent}>{profile.hobbies || '未設定'}</p>
-        </div>
-
-        <div style={styles.section}>
-          <h2 style={styles.sectionTitle}>得意なこと</h2>
-          <p style={styles.sectionContent}>{profile.skills || '未設定'}</p>
-        </div>
-
-        <div style={styles.section}>
-          <h2 style={styles.sectionTitle}>キャリア経歴</h2>
-          <pre style={styles.careerHistory}>{profile.career_history || '未設定'}</pre>
-        </div>
-      </div>
-
-      {isMyProfile && (
-        <div style={styles.logoutSection}>
-          <button
-            style={styles.logoutButton}
-            onClick={() => {
-              logout()
-              navigate('/login')
-            }}
-          >
-            ログアウト
-          </button>
-        </div>
-      )}
     </div>
   )
-}
-
-const styles = {
-  container: {
-    maxWidth: '800px',
-    margin: '0 auto',
-    backgroundColor: '#fff',
-    minHeight: '100vh',
-  },
-  header: {
-    padding: '16px',
-    borderBottom: '1px solid #e0e0e0',
-  },
-  backButton: {
-    backgroundColor: 'transparent',
-    border: 'none',
-    fontSize: '16px',
-    cursor: 'pointer',
-    color: '#1976d2',
-    padding: '8px 0',
-  },
-  profileHeader: {
-    textAlign: 'center',
-    padding: '32px 16px',
-    backgroundColor: '#f8f9fa',
-  },
-  avatar: {
-    width: '120px',
-    height: '120px',
-    borderRadius: '50%',
-    objectFit: 'cover',
-    marginBottom: '16px',
-    border: '4px solid #fff',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-  },
-  name: {
-    fontSize: '24px',
-    fontWeight: 'bold',
-    marginBottom: '8px',
-  },
-  department: {
-    fontSize: '16px',
-    color: '#666',
-    marginBottom: '4px',
-  },
-  joinedYear: {
-    fontSize: '14px',
-    color: '#888',
-    marginBottom: '12px',
-  },
-  bio: {
-    fontSize: '14px',
-    color: '#333',
-    fontStyle: 'italic',
-  },
-  editButton: {
-    marginTop: '16px',
-    padding: '8px 16px',
-    backgroundColor: '#1976d2',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '4px',
-    fontSize: '14px',
-    cursor: 'pointer',
-  },
-  logoutSection: {
-    padding: '24px 16px',
-    textAlign: 'center',
-    borderTop: '1px solid #e0e0e0',
-    marginTop: '16px',
-  },
-  logoutButton: {
-    padding: '10px 24px',
-    backgroundColor: '#dc3545',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '4px',
-    fontSize: '14px',
-    cursor: 'pointer',
-    width: '100%',
-    maxWidth: '300px',
-  },
-  details: {
-    padding: '16px',
-  },
-  section: {
-    marginBottom: '24px',
-    padding: '16px',
-    backgroundColor: '#f8f9fa',
-    borderRadius: '8px',
-  },
-  sectionTitle: {
-    fontSize: '16px',
-    fontWeight: 'bold',
-    marginBottom: '8px',
-    color: '#1976d2',
-  },
-  sectionContent: {
-    fontSize: '14px',
-    lineHeight: '1.6',
-    color: '#333',
-  },
-  careerHistory: {
-    fontSize: '14px',
-    lineHeight: '1.8',
-    color: '#333',
-    whiteSpace: 'pre-wrap',
-    fontFamily: 'inherit',
-  },
-  loading: {
-    textAlign: 'center',
-    padding: '40px',
-    fontSize: '16px',
-  },
-  error: {
-    textAlign: 'center',
-    padding: '40px',
-    color: '#d32f2f',
-  },
 }
 
 export default UserProfilePage

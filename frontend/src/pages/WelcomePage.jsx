@@ -3,6 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useAutoAnimate } from '@formkit/auto-animate/react'
 import SearchResults from '../components/SearchResults'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Separator } from '@/components/ui/separator'
+import { Search, X, Settings, Building2, Users, Bell } from 'lucide-react'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
@@ -19,7 +26,6 @@ function WelcomePage() {
   useEffect(() => {
     if (user) {
       fetchProfile()
-      // SSE接続を確立（トークンをクエリパラメータで送信）
       const token = localStorage.getItem('token')
       const eventSource = new EventSource(`${API_URL}/activities/stream?token=${token}`)
       
@@ -27,7 +33,6 @@ function WelcomePage() {
         try {
           const newActivity = JSON.parse(event.data)
           setActivities(prev => {
-            // 重複を避ける
             if (prev.find(a => a.id === newActivity.id)) {
               return prev
             }
@@ -94,325 +99,151 @@ function WelcomePage() {
 
   if (loading) {
     return (
-      <div style={styles.container}>
-        <div style={styles.loading}>読み込み中...</div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-lg text-muted-foreground">読み込み中...</div>
       </div>
     )
   }
 
   return (
-    <div style={styles.container}>
-      {/* ヘッダー - ユーザー情報 */}
-      <header style={styles.header}>
-        <div style={styles.userInfo}>
-          <img
-            src={profile?.profile_image_url || 'https://via.placeholder.com/60'}
-            alt={user?.display_name}
-            style={styles.avatar}
-          />
-          <div style={styles.userDetails}>
-            <h2 style={styles.userName}>{user?.display_name}</h2>
-            <p style={styles.department}>{profile?.department_name || '未所属'}</p>
-          </div>
-        </div>
-        <button 
-          onClick={() => navigate(`/users/${user?.id}/profile`)} 
-          style={styles.settingsButton}
-          title="設定"
-        >
-          ⚙️
-        </button>
-      </header>
-
-      {/* メインコンテンツ - ダッシュボード */}
-      <main style={styles.main}>
-        {/* 検索バー */}
-        <form onSubmit={handleSearch} style={styles.searchForm}>
-          <div style={styles.searchContainer}>
-            <span style={styles.searchIcon}>🔍</span>
-            <input
-              type="text"
-              value={searchKeyword}
-              onChange={(e) => {
-                setSearchKeyword(e.target.value)
-                if (!e.target.value.trim()) {
-                  setShowResults(false)
-                }
-              }}
-              placeholder="社員、部署、投稿を検索..."
-              style={styles.searchInput}
-            />
-            {searchKeyword && (
-              <button
-                type="button"
-                onClick={handleClearSearch}
-                style={styles.clearButton}
-              >
-                ✕
-              </button>
-            )}
-          </div>
-          <button type="submit" style={styles.searchButton}>
-            検索
-          </button>
-        </form>
-
-        {/* 検索結果 */}
-        {showResults && (
-          <SearchResults
-            keyword={searchKeyword}
-            onClear={handleClearSearch}
-          />
-        )}
-
-        <h1 style={styles.welcomeTitle}>
-          ようこそ、{user?.display_name}さん
-        </h1>
-
-        {/* クイックアクセスメニュー */}
-        <div style={styles.menuGrid}>
-          {/* 部署一覧 */}
-          <div
-            style={styles.menuCard}
-            onClick={() => navigate('/departments')}
-          >
-            <div style={styles.menuIcon}>🏢</div>
-            <h3 style={styles.menuTitle}>部署一覧</h3>
-            <p style={styles.menuDescription}>
-              全社の部署情報を閲覧します
-            </p>
-          </div>
-
-          {/* 社員一覧 */}
-          <div
-            style={styles.menuCard}
-            onClick={() => navigate('/users')}
-          >
-            <div style={styles.menuIcon}>👥</div>
-            <h3 style={styles.menuTitle}>社員一覧</h3>
-            <p style={styles.menuDescription}>
-              全社の社員を閲覧します
-            </p>
-          </div>
-        </div>
-
-        {/* 一言メッセージ表示 */}
-        {profile?.bio && (
-          <div style={styles.bioSection}>
-            <h3 style={styles.bioTitle}>一言メッセージ</h3>
-            <p style={styles.bioText}>{profile.bio}</p>
-          </div>
-        )}
-
-        {/* お知らせ */}
-        {(activities?.length || 0) > 0 && (
-          <div style={styles.activitiesSection}>
-            <h3 style={styles.activitiesTitle}>📢 お知らせ</h3>
-            <div ref={activitiesRef} style={styles.activitiesList}>
-              {activities.map(activity => (
-                <div key={activity.id} style={styles.activityItem}>
-                  <div style={styles.activityMessage}>{activity.message}</div>
-                  <div style={styles.activityTime}>{formatTimeAgo(activity.created_at)}</div>
-                </div>
-              ))}
+    <div className="min-h-screen bg-background">
+      <div className="max-w-4xl mx-auto">
+        {/* ヘッダー */}
+        <header className="bg-primary text-primary-foreground p-4 flex justify-between items-center shadow-md">
+          <div className="flex items-center gap-3">
+            <Avatar className="h-12 w-12 border-2 border-primary-foreground">
+              <AvatarImage src={profile?.profile_image_url} alt={user?.display_name} />
+              <AvatarFallback>{user?.display_name?.charAt(0) || 'U'}</AvatarFallback>
+            </Avatar>
+            <div>
+              <h2 className="text-lg font-bold">{user?.display_name}</h2>
+              <Badge variant="secondary" className="mt-1">
+                {profile?.department_name || '未所属'}
+              </Badge>
             </div>
           </div>
-        )}
-      </main>
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => navigate(`/users/${user?.id}/profile`)}
+            className="text-primary-foreground hover:bg-primary/90"
+          >
+            <Settings className="h-6 w-6" />
+          </Button>
+        </header>
+
+        {/* メインコンテンツ */}
+        <main className="p-4 space-y-6">
+          {/* 検索バー */}
+          <form onSubmit={handleSearch} className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                value={searchKeyword}
+                onChange={(e) => {
+                  setSearchKeyword(e.target.value)
+                  if (!e.target.value.trim()) {
+                    setShowResults(false)
+                  }
+                }}
+                placeholder="社員、部署、投稿を検索..."
+                className="pl-10 pr-10"
+              />
+              {searchKeyword && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleClearSearch}
+                  className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+            <Button type="submit">
+              検索
+            </Button>
+          </form>
+
+          {/* 検索結果 */}
+          {showResults && (
+            <SearchResults
+              keyword={searchKeyword}
+              onClear={handleClearSearch}
+            />
+          )}
+
+          {/* ウェルカムメッセージ */}
+          <h1 className="text-2xl font-bold text-center text-foreground">
+            ようこそ、{user?.display_name}さん
+          </h1>
+
+          {/* クイックアクセスメニュー */}
+          <div className="grid grid-cols-2 gap-4">
+            <Card 
+              className="cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => navigate('/departments')}
+            >
+              <CardHeader className="text-center">
+                <Building2 className="h-10 w-10 mx-auto text-primary mb-2" />
+                <CardTitle>部署一覧</CardTitle>
+                <CardDescription>全社の部署情報を閲覧します</CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card 
+              className="cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => navigate('/users')}
+            >
+              <CardHeader className="text-center">
+                <Users className="h-10 w-10 mx-auto text-primary mb-2" />
+                <CardTitle>社員一覧</CardTitle>
+                <CardDescription>全社の社員を閲覧します</CardDescription>
+              </CardHeader>
+            </Card>
+          </div>
+
+          {/* 一言メッセージ */}
+          {profile?.bio && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-primary">一言メッセージ</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-lg italic text-foreground">{profile.bio}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* お知らせ */}
+          {(activities?.length || 0) > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Bell className="h-5 w-5" />
+                  お知らせ
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div ref={activitiesRef} className="space-y-3">
+                  {activities.map(activity => (
+                    <div key={activity.id} className="p-3 bg-muted rounded-lg border-l-4 border-primary">
+                      <div className="text-sm text-foreground">{activity.message}</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {formatTimeAgo(activity.created_at)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </main>
+      </div>
     </div>
   )
-}
-
-const styles = {
-  container: {
-    maxWidth: '800px',
-    margin: '0 auto',
-    backgroundColor: '#f5f5f5',
-    minHeight: '100vh',
-  },
-  header: {
-    backgroundColor: '#1976d2',
-    color: '#fff',
-    padding: '16px 20px',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-  },
-  userInfo: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-  },
-  avatar: {
-    width: '50px',
-    height: '50px',
-    borderRadius: '50%',
-    objectFit: 'cover',
-    border: '2px solid #fff',
-  },
-  userDetails: {
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  userName: {
-    margin: 0,
-    fontSize: '18px',
-    fontWeight: 'bold',
-  },
-  department: {
-    margin: '4px 0 0 0',
-    fontSize: '14px',
-    opacity: 0.9,
-  },
-  settingsButton: {
-    backgroundColor: 'transparent',
-    border: 'none',
-    color: '#fff',
-    fontSize: '24px',
-    cursor: 'pointer',
-    padding: '8px',
-  },
-  main: {
-    padding: '24px 16px',
-  },
-  searchForm: {
-    display: 'flex',
-    gap: '8px',
-    marginBottom: '24px',
-  },
-  searchContainer: {
-    flex: 1,
-    display: 'flex',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: '8px',
-    padding: '8px 12px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-  },
-  searchIcon: {
-    fontSize: '18px',
-    marginRight: '8px',
-    color: '#666',
-  },
-  searchInput: {
-    flex: 1,
-    border: 'none',
-    outline: 'none',
-    fontSize: '16px',
-    padding: '4px',
-  },
-  clearButton: {
-    backgroundColor: 'transparent',
-    border: 'none',
-    color: '#999',
-    cursor: 'pointer',
-    fontSize: '16px',
-    padding: '4px',
-  },
-  searchButton: {
-    padding: '10px 20px',
-    backgroundColor: '#1976d2',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '8px',
-    fontSize: '16px',
-    cursor: 'pointer',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-  },
-  welcomeTitle: {
-    fontSize: '24px',
-    marginBottom: '24px',
-    color: '#333',
-    textAlign: 'center',
-  },
-  menuGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, 1fr)',
-    gap: '16px',
-    marginBottom: '24px',
-  },
-  menuCard: {
-    backgroundColor: '#fff',
-    padding: '24px',
-    borderRadius: '8px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-    cursor: 'pointer',
-    transition: 'transform 0.2s, box-shadow 0.2s',
-    textAlign: 'center',
-  },
-  menuIcon: {
-    fontSize: '32px',
-    marginBottom: '12px',
-  },
-  menuTitle: {
-    fontSize: '16px',
-    fontWeight: 'bold',
-    marginBottom: '8px',
-    color: '#333',
-  },
-  menuDescription: {
-    fontSize: '14px',
-    color: '#666',
-    margin: 0,
-  },
-  bioSection: {
-    backgroundColor: '#fff',
-    padding: '20px',
-    borderRadius: '8px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-    textAlign: 'center',
-    marginBottom: '24px',
-  },
-  bioTitle: {
-    fontSize: '16px',
-    fontWeight: 'bold',
-    marginBottom: '8px',
-    color: '#1976d2',
-  },
-  bioText: {
-    fontSize: '16px',
-    color: '#333',
-    fontStyle: 'italic',
-    margin: 0,
-  },
-  activitiesSection: {
-    backgroundColor: '#fff',
-    padding: '20px',
-    borderRadius: '8px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-  },
-  activitiesTitle: {
-    fontSize: '18px',
-    fontWeight: 'bold',
-    marginBottom: '16px',
-    color: '#333',
-  },
-  activitiesList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-  },
-  activityItem: {
-    padding: '12px',
-    backgroundColor: '#f8f9fa',
-    borderRadius: '8px',
-    borderLeft: '4px solid #1976d2',
-  },
-  activityMessage: {
-    fontSize: '14px',
-    color: '#333',
-    marginBottom: '4px',
-  },
-  activityTime: {
-    fontSize: '12px',
-    color: '#888',
-  },
-  loading: {
-    textAlign: 'center',
-    padding: '40px',
-    fontSize: '16px',
-  },
 }
 
 export default WelcomePage

@@ -1,6 +1,20 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Separator } from '@/components/ui/separator'
+import { Search, ArrowLeft, ChevronLeft, ChevronRight, User } from 'lucide-react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
@@ -81,8 +95,8 @@ function UsersListPage() {
     fetchUsers()
   }
 
-  const handleDepartmentChange = (e) => {
-    setSelectedDepartment(e.target.value)
+  const handleDepartmentChange = (value) => {
+    setSelectedDepartment(value)
     setPage(1)
   }
 
@@ -94,281 +108,132 @@ function UsersListPage() {
 
   if (loading) {
     return (
-      <div style={styles.container}>
-        <div style={styles.loading}>読み込み中...</div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-lg text-muted-foreground">読み込み中...</div>
       </div>
     )
   }
 
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        <button 
-          style={styles.backButton}
-          onClick={() => navigate('/')}
-        >
-          ← 戻る
-        </button>
-        <h1 style={styles.title}>社員一覧</h1>
-      </div>
+    <div className="min-h-screen bg-background">
+      <div className="max-w-4xl mx-auto p-4">
+        {/* ヘッダー */}
+        <div className="flex items-center gap-4 mb-6">
+          <Button variant="ghost" onClick={() => navigate('/')}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            戻る
+          </Button>
+          <h1 className="text-2xl font-bold">社員一覧</h1>
+        </div>
 
-      {/* フィルター & 検索 */}
-      <div style={styles.filterSection}>
-        <form onSubmit={handleSearch} style={styles.searchForm}>
-          <div style={styles.searchContainer}>
-            <span style={styles.searchIcon}>🔍</span>
-            <input
-              type="text"
-              value={searchKeyword}
-              onChange={(e) => setSearchKeyword(e.target.value)}
-              placeholder="社員を検索..."
-              style={styles.searchInput}
-            />
+        {/* フィルター & 検索 */}
+        <Card className="mb-6">
+          <CardContent className="pt-6 space-y-4">
+            <form onSubmit={handleSearch} className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  value={searchKeyword}
+                  onChange={(e) => setSearchKeyword(e.target.value)}
+                  placeholder="社員を検索..."
+                  className="pl-10"
+                />
+              </div>
+              <Button type="submit">検索</Button>
+            </form>
+
+            <Select value={selectedDepartment} onValueChange={handleDepartmentChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="全ての部署" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">全ての部署</SelectItem>
+                {departments.map(dept => (
+                  <SelectItem key={dept.id} value={dept.id.toString()}>
+                    {dept.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
+
+        {error && (
+          <div className="p-4 bg-destructive/10 text-destructive rounded-lg mb-4">
+            {error}
           </div>
-          <button type="submit" style={styles.searchButton}>
-            検索
-          </button>
-        </form>
+        )}
 
-        <select
-          value={selectedDepartment}
-          onChange={handleDepartmentChange}
-          style={styles.departmentSelect}
-        >
-          <option value="">全ての部署</option>
-          {departments.map(dept => (
-            <option key={dept.id} value={dept.id}>{dept.name}</option>
-          ))}
-        </select>
-      </div>
+        {/* 結果件数 */}
+        <p className="text-sm text-muted-foreground mb-4">
+          {(totalCount || 0) === 0 
+            ? '該当する社員がいません' 
+            : `${totalCount || 0}件中 ${(page - 1) * perPage + 1} - ${Math.min(page * perPage, totalCount || 0)}件を表示`
+          }
+        </p>
 
-      {error && <div style={styles.error}>{error}</div>}
+        {/* グリッドレイアウト */}
+        {(users?.length || 0) > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
+            {users.map(user => (
+              <Card
+                key={user.id}
+                className="cursor-pointer hover:shadow-lg transition-shadow"
+                onClick={() => navigate(`/users/${user.id}/profile`)}
+              >
+                <CardContent className="pt-6 text-center">
+                  <Avatar className="h-20 w-20 mx-auto mb-3">
+                    <AvatarImage src={user.profile_image_url} alt={user.display_name} />
+                    <AvatarFallback>
+                      <User className="h-8 w-8" />
+                    </AvatarFallback>
+                  </Avatar>
+                  <h3 className="font-medium mb-1">{user.display_name}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {user.department_name || '未所属'}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <Card>
+            <CardContent className="pt-6 text-center text-muted-foreground">
+              該当する社員が見つかりませんでした
+            </CardContent>
+          </Card>
+        )}
 
-      {/* 結果件数 */}
-      <p style={styles.resultCount}>
-        {(totalCount || 0) === 0 
-          ? '該当する社員がいません' 
-          : `${totalCount || 0}件中 ${(page - 1) * perPage + 1} - ${Math.min(page * perPage, totalCount || 0)}件を表示`
-        }
-      </p>
-
-      {/* グリッドレイアウト */}
-      {(users?.length || 0) > 0 ? (
-        <div style={styles.userGrid}>
-          {users.map(user => (
-            <div
-              key={user.id}
-              style={styles.userCard}
-              onClick={() => navigate(`/users/${user.id}/profile`)}
+        {/* ページネーション */}
+        {(totalPages || 0) > 1 && (
+          <div className="flex justify-center items-center gap-4">
+            <Button
+              variant="outline"
+              onClick={() => handlePageChange(page - 1)}
+              disabled={page === 1}
             >
-              <img
-                src={user.profile_image_url || 'https://via.placeholder.com/120'}
-                alt={user.display_name}
-                style={styles.userAvatar}
-              />
-              <h3 style={styles.userName}>{user.display_name}</h3>
-              <p style={styles.userDepartment}>{user.department_name || '未所属'}</p>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div style={styles.emptyState}>
-          <p>該当する社員が見つかりませんでした</p>
-        </div>
-      )}
-
-      {/* ページネーション */}
-      {(totalPages || 0) > 1 && (
-        <div style={styles.pagination}>
-          <button
-            onClick={() => handlePageChange(page - 1)}
-            disabled={page === 1}
-            style={{
-              ...styles.pageButton,
-              ...(page === 1 ? styles.disabledButton : {})
-            }}
-          >
-            ← 前へ
-          </button>
-          
-          <span style={styles.pageInfo}>
-            {page} / {totalPages}ページ
-          </span>
-          
-          <button
-            onClick={() => handlePageChange(page + 1)}
-            disabled={page === totalPages}
-            style={{
-              ...styles.pageButton,
-              ...(page === totalPages ? styles.disabledButton : {})
-            }}
-          >
-            次へ →
-          </button>
-        </div>
-      )}
+              <ChevronLeft className="h-4 w-4 mr-2" />
+              前へ
+            </Button>
+            
+            <span className="text-sm text-muted-foreground">
+              {page} / {totalPages}ページ
+            </span>
+            
+            <Button
+              variant="outline"
+              onClick={() => handlePageChange(page + 1)}
+              disabled={page === totalPages}
+            >
+              次へ
+              <ChevronRight className="h-4 w-4 ml-2" />
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   )
-}
-
-const styles = {
-  container: {
-    maxWidth: '800px',
-    margin: '0 auto',
-    backgroundColor: '#f5f5f5',
-    minHeight: '100vh',
-    padding: '16px',
-  },
-  header: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '16px',
-    marginBottom: '24px',
-  },
-  backButton: {
-    backgroundColor: 'transparent',
-    border: 'none',
-    fontSize: '16px',
-    cursor: 'pointer',
-    color: '#1976d2',
-    padding: '8px',
-  },
-  title: {
-    margin: 0,
-    fontSize: '24px',
-    fontWeight: 'bold',
-  },
-  filterSection: {
-    backgroundColor: '#fff',
-    padding: '16px',
-    borderRadius: '8px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-    marginBottom: '24px',
-  },
-  searchForm: {
-    display: 'flex',
-    gap: '8px',
-    marginBottom: '12px',
-  },
-  searchContainer: {
-    flex: 1,
-    display: 'flex',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-    borderRadius: '4px',
-    padding: '8px 12px',
-  },
-  searchIcon: {
-    fontSize: '16px',
-    marginRight: '8px',
-    color: '#666',
-  },
-  searchInput: {
-    flex: 1,
-    border: 'none',
-    outline: 'none',
-    fontSize: '14px',
-    backgroundColor: 'transparent',
-  },
-  searchButton: {
-    padding: '8px 16px',
-    backgroundColor: '#1976d2',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '14px',
-  },
-  departmentSelect: {
-    width: '100%',
-    padding: '10px',
-    border: '1px solid #ddd',
-    borderRadius: '4px',
-    fontSize: '14px',
-    backgroundColor: '#fff',
-  },
-  resultCount: {
-    fontSize: '14px',
-    color: '#666',
-    marginBottom: '16px',
-  },
-  userGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
-    gap: '16px',
-    marginBottom: '24px',
-  },
-  userCard: {
-    backgroundColor: '#fff',
-    borderRadius: '8px',
-    padding: '16px',
-    textAlign: 'center',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-    cursor: 'pointer',
-    transition: 'transform 0.2s',
-  },
-  userAvatar: {
-    width: '80px',
-    height: '80px',
-    borderRadius: '50%',
-    objectFit: 'cover',
-    marginBottom: '12px',
-  },
-  userName: {
-    margin: '0 0 4px 0',
-    fontSize: '16px',
-    fontWeight: 'bold',
-  },
-  userDepartment: {
-    margin: 0,
-    fontSize: '14px',
-    color: '#666',
-  },
-  pagination: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: '16px',
-    padding: '16px',
-  },
-  pageButton: {
-    padding: '8px 16px',
-    backgroundColor: '#1976d2',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '14px',
-  },
-  disabledButton: {
-    backgroundColor: '#ccc',
-    cursor: 'not-allowed',
-  },
-  pageInfo: {
-    fontSize: '14px',
-    color: '#666',
-  },
-  loading: {
-    textAlign: 'center',
-    padding: '40px',
-    fontSize: '16px',
-  },
-  emptyState: {
-    textAlign: 'center',
-    padding: '40px',
-    color: '#666',
-    fontSize: '16px',
-    backgroundColor: '#fff',
-    borderRadius: '8px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-  },
-  error: {
-    padding: '16px',
-    backgroundColor: '#ffebee',
-    color: '#c62828',
-    borderRadius: '8px',
-    marginBottom: '16px',
-  },
 }
 
 export default UsersListPage

@@ -1,6 +1,13 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Separator } from '@/components/ui/separator'
+import { Search, X, ArrowLeft, User, Building2, FileText } from 'lucide-react'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
@@ -42,15 +49,21 @@ function SearchResults({ keyword, onClear }) {
   }
 
   if (loading) {
-    return <div style={styles.loading}>検索中...</div>
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        検索中...
+      </div>
+    )
   }
 
   if (error) {
     return (
-      <div style={styles.error}>
-        <p>{error}</p>
-        <button onClick={onClear} style={styles.clearButton}>クリア</button>
-      </div>
+      <Card className="mb-6 border-destructive">
+        <CardContent className="pt-6">
+          <p className="text-destructive mb-4">{error}</p>
+          <Button variant="outline" onClick={onClear}>クリア</Button>
+        </CardContent>
+      </Card>
     )
   }
 
@@ -62,252 +75,113 @@ function SearchResults({ keyword, onClear }) {
 
   if (totalCount === 0) {
     return (
-      <div style={styles.noResults}>
-        <p>「{keyword}」の検索結果は見つかりませんでした</p>
-        <button onClick={onClear} style={styles.clearButton}>クリア</button>
-      </div>
+      <Card className="mb-6">
+        <CardContent className="pt-6 text-center">
+          <p className="text-muted-foreground mb-4">
+            「{keyword}」の検索結果は見つかりませんでした
+          </p>
+          <Button variant="outline" onClick={onClear}>クリア</Button>
+        </CardContent>
+      </Card>
     )
   }
 
+  const tabs = [
+    { id: 'users', label: '社員', count: results.users?.length || 0, icon: User },
+    { id: 'departments', label: '部署', count: results.departments?.length || 0, icon: Building2 },
+    { id: 'posts', label: '投稿', count: results.posts?.length || 0, icon: FileText },
+  ]
+
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        <h3 style={styles.title}>検索結果: 「{keyword}」</h3>
-        <button onClick={onClear} style={styles.clearButton}>クリア</button>
-      </div>
+    <Card className="mb-6">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="text-lg">検索結果: 「{keyword}」</CardTitle>
+        <Button variant="outline" size="sm" onClick={onClear}>
+          <X className="h-4 w-4 mr-1" />
+          クリア
+        </Button>
+      </CardHeader>
+      <CardContent>
+        {/* タブ */}
+        <div className="flex border-b mb-4">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === tab.id
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <tab.icon className="h-4 w-4" />
+              {tab.label}
+              <Badge variant={activeTab === tab.id ? "default" : "secondary"} className="ml-1">
+                {tab.count}
+              </Badge>
+            </button>
+          ))}
+        </div>
 
-      {/* タブ */}
-      <div style={styles.tabs}>
-        <button
-          style={{
-            ...styles.tab,
-            ...(activeTab === 'users' ? styles.activeTab : {})
-          }}
-          onClick={() => setActiveTab('users')}
-        >
-          社員 ({results.users?.length || 0})
-        </button>
-        <button
-          style={{
-            ...styles.tab,
-            ...(activeTab === 'departments' ? styles.activeTab : {})
-          }}
-          onClick={() => setActiveTab('departments')}
-        >
-          部署 ({results.departments?.length || 0})
-        </button>
-        <button
-          style={{
-            ...styles.tab,
-            ...(activeTab === 'posts' ? styles.activeTab : {})
-          }}
-          onClick={() => setActiveTab('posts')}
-        >
-          投稿 ({results.posts?.length || 0})
-        </button>
-      </div>
-
-      {/* 結果表示 */}
-      <div style={styles.results}>
-        {activeTab === 'users' && results.users?.map(user => (
-          <div
-            key={user.id}
-            style={styles.resultCard}
-            onClick={() => navigate(`/users/${user.id}/profile`)}
-          >
-            <img
-              src={user.profile_image_url || 'https://via.placeholder.com/50'}
-              alt={user.display_name}
-              style={styles.userAvatar}
-            />
-            <div style={styles.userInfo}>
-              <h4 style={styles.userName}>{user.display_name}</h4>
-              <p style={styles.userDept}>{user.department_name}</p>
-              <p style={styles.matchedText}>
-                <span style={styles.matchedLabel}>{user.matched_field}: </span>
-                {user.matched_text}
-              </p>
+        {/* 結果表示 */}
+        <div className="space-y-3 max-h-[400px] overflow-y-auto">
+          {activeTab === 'users' && results.users?.map(user => (
+            <div
+              key={user.id}
+              className="flex items-center gap-4 p-4 bg-muted rounded-lg cursor-pointer hover:bg-muted/80 transition-colors"
+              onClick={() => navigate(`/users/${user.id}/profile`)}
+            >
+              <Avatar className="h-12 w-12">
+                <AvatarImage src={user.profile_image_url} alt={user.display_name} />
+                <AvatarFallback>{user.display_name?.charAt(0) || 'U'}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <h4 className="font-medium">{user.display_name}</h4>
+                <p className="text-sm text-muted-foreground">{user.department_name}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  <span className="font-medium text-primary">{user.matched_field}: </span>
+                  {user.matched_text}
+                </p>
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
 
-        {activeTab === 'departments' && results.departments?.map(dept => (
-          <div
-            key={dept.id}
-            style={styles.resultCard}
-            onClick={() => navigate(`/departments/${dept.id}`)}
-          >
-            <img
-              src={dept.cover_image_url || 'https://via.placeholder.com/100x60'}
-              alt={dept.name}
-              style={styles.deptImage}
-            />
-            <div style={styles.deptInfo}>
-              <h4 style={styles.deptName}>{dept.name}</h4>
-              <p style={styles.deptCatchcopy}>{dept.catchcopy}</p>
-              <p style={styles.matchedText}>
-                <span style={styles.matchedLabel}>{dept.matched_field}</span>
-              </p>
+          {activeTab === 'departments' && results.departments?.map(dept => (
+            <div
+              key={dept.id}
+              className="flex items-center gap-4 p-4 bg-muted rounded-lg cursor-pointer hover:bg-muted/80 transition-colors"
+              onClick={() => navigate(`/departments/${dept.id}`)}
+            >
+              <img
+                src={dept.cover_image_url || 'https://via.placeholder.com/100x60'}
+                alt={dept.name}
+                className="w-24 h-16 object-cover rounded-md"
+              />
+              <div className="flex-1">
+                <h4 className="font-medium">{dept.name}</h4>
+                <p className="text-sm text-muted-foreground">{dept.catchcopy}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  <span className="font-medium text-primary">{dept.matched_field}</span>
+                </p>
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
 
-        {activeTab === 'posts' && results.posts?.map(post => (
-          <div
-            key={post.id}
-            style={styles.resultCard}
-          >
-            <div style={styles.postHeader}>
-              <strong>{post.author_name}</strong>
-              <span style={styles.postDate}>
-                {new Date(post.created_at).toLocaleDateString('ja-JP')}
-              </span>
+          {activeTab === 'posts' && results.posts?.map(post => (
+            <div key={post.id} className="p-4 bg-muted rounded-lg">
+              <div className="flex justify-between items-center mb-2">
+                <strong className="text-sm">{post.author_name}</strong>
+                <span className="text-xs text-muted-foreground">
+                  {new Date(post.created_at).toLocaleDateString('ja-JP')}
+                </span>
+              </div>
+              <p className="text-sm text-foreground">{post.body}</p>
             </div>
-            <p style={styles.postBody}>{post.body}</p>
-          </div>
-        ))}
-      </div>
-    </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   )
-}
-
-const styles = {
-  container: {
-    backgroundColor: '#fff',
-    borderRadius: '8px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-    marginBottom: '24px',
-    overflow: 'hidden',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '16px',
-    borderBottom: '1px solid #e0e0e0',
-  },
-  title: {
-    margin: 0,
-    fontSize: '16px',
-    fontWeight: 'bold',
-  },
-  clearButton: {
-    padding: '6px 12px',
-    backgroundColor: '#f5f5f5',
-    border: '1px solid #ddd',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '14px',
-  },
-  tabs: {
-    display: 'flex',
-    borderBottom: '1px solid #e0e0e0',
-  },
-  tab: {
-    flex: 1,
-    padding: '12px',
-    border: 'none',
-    backgroundColor: '#fff',
-    fontSize: '14px',
-    cursor: 'pointer',
-    borderBottom: '2px solid transparent',
-  },
-  activeTab: {
-    borderBottom: '2px solid #1976d2',
-    color: '#1976d2',
-    fontWeight: 'bold',
-  },
-  results: {
-    padding: '16px',
-    maxHeight: '400px',
-    overflowY: 'auto',
-  },
-  resultCard: {
-    display: 'flex',
-    padding: '12px',
-    marginBottom: '12px',
-    backgroundColor: '#f8f9fa',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    transition: 'background-color 0.2s',
-  },
-  userAvatar: {
-    width: '50px',
-    height: '50px',
-    borderRadius: '50%',
-    objectFit: 'cover',
-    marginRight: '12px',
-  },
-  userInfo: {
-    flex: 1,
-  },
-  userName: {
-    margin: '0 0 4px 0',
-    fontSize: '16px',
-  },
-  userDept: {
-    margin: '0 0 4px 0',
-    fontSize: '14px',
-    color: '#666',
-  },
-  deptImage: {
-    width: '100px',
-    height: '60px',
-    objectFit: 'cover',
-    borderRadius: '4px',
-    marginRight: '12px',
-  },
-  deptInfo: {
-    flex: 1,
-  },
-  deptName: {
-    margin: '0 0 4px 0',
-    fontSize: '16px',
-  },
-  deptCatchcopy: {
-    margin: '0 0 4px 0',
-    fontSize: '14px',
-    color: '#666',
-  },
-  matchedText: {
-    margin: 0,
-    fontSize: '13px',
-    color: '#888',
-  },
-  matchedLabel: {
-    fontWeight: 'bold',
-    color: '#1976d2',
-  },
-  postHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    marginBottom: '8px',
-  },
-  postDate: {
-    fontSize: '12px',
-    color: '#888',
-  },
-  postBody: {
-    margin: 0,
-    fontSize: '14px',
-    lineHeight: '1.5',
-  },
-  loading: {
-    textAlign: 'center',
-    padding: '20px',
-    fontSize: '16px',
-  },
-  error: {
-    padding: '16px',
-    backgroundColor: '#ffebee',
-    borderRadius: '8px',
-    marginBottom: '16px',
-  },
-  noResults: {
-    textAlign: 'center',
-    padding: '24px',
-    color: '#666',
-  },
 }
 
 export default SearchResults
