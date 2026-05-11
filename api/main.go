@@ -219,6 +219,22 @@ func main() {
 		r.Get("/api/users", getUsersList)
 		r.Get("/api/activities", getActivitiesHandler)
 		r.Get("/api/activities/stream", activitiesStreamHandler)
+
+		// フォロー機能
+		r.Post("/api/users/{userId}/follow", followHandler)
+		r.Delete("/api/users/{userId}/follow", unfollowHandler)
+		r.Get("/api/users/{userId}/followers", getFollowersHandler)
+		r.Get("/api/users/{userId}/following", getFollowingHandler)
+		r.Get("/api/users/{userId}/is-following", isFollowingHandler)
+
+		// いいね機能
+		r.Post("/api/posts/{postId}/like", likeHandler)
+		r.Delete("/api/posts/{postId}/like", unlikeHandler)
+		r.Get("/api/posts/{postId}/likes", getLikesHandler)
+		r.Get("/api/posts/{postId}/is-liked", isLikedHandler)
+
+		// フィード機能
+		r.Get("/api/feed", getFeedHandler)
 	})
 
 	port := os.Getenv("PORT")
@@ -710,6 +726,236 @@ func createActivity(actorID string, activityType string, message string) error {
 	}
 
 	return nil
+}
+
+// Follow handlers
+func followHandler(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value("user").(*auth.User)
+	targetID := chi.URLParam(r, "userId")
+
+	if user.ID == targetID {
+		http.Error(w, "Cannot follow yourself", http.StatusBadRequest)
+		return
+	}
+
+	_, err := db.Exec(`
+		INSERT INTO followers (follower_id, following_id)
+		VALUES ($1, $2)
+		ON CONFLICT (follower_id, following_id) DO NOTHING`,
+		user.ID, targetID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Followed successfully"})
+}
+
+func unfollowHandler(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value("user").(*auth.User)
+	targetID := chi.URLParam(r, "userId")
+
+	_, err := db.Exec(`
+		DELETE FROM followers
+		WHERE follower_id = $1 AND following_id = $2`,
+		user.ID, targetID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Unfollowed successfully"})
+}
+
+func getFollowersHandler(w http.ResponseWriter, r *http.Request) {
+	userID := chi.URLParam(r, "userId")
+
+	var followers []User
+	err := db.Select(&followers, `
+		SELECT u.id, u.display_name, up.profile_image_url
+		FROM followers f
+		JOIN users u ON f.follower_id = u.id
+		LEFT JOIN user_profiles up ON u.id = up.user_id
+		WHERE f.following_id = $1
+		ORDER BY f.created_at DESC`, userID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(followers)
+}
+
+func getFollowingHandler(w http.ResponseWriter, r *http.Request) {
+	userID := chi.URLParam(r, "userId")
+
+	var following []User
+	err := db.Select(&following, `
+		SELECT u.id, u.display_name, up.profile_image_url
+		FROM followers f
+		JOIN users u ON f.following_id = u.id
+		LEFT JOIN user_profiles up ON u.id = up.user_id
+		WHERE f.follower_id = $1
+		ORDER BY f.created_at DESC`, userID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(following)
+}
+
+func isFollowingHandler(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value("user").(*auth.User)
+	targetID := chi.URLParam(r, "userId")
+
+	var count int
+	err := db.Get(&count, `
+		SELECT COUNT(*) FROM followers
+		WHERE follower_id = $1 AND following_id = $2`,
+		user.ID, targetID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]bool{"is_following": count > 0})
+}
+
+// Like handlers
+func likeHandler(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value("user").(*auth.User)
+	postID := chi.URLParam(r, "postId")
+
+	_, err := db.Exec(`
+		INSERT INTO likes (user_id, post_id)
+		VALUES ($1, $2)
+		ON CONFLICT (user_id, post_id) DO NOTHING`,
+		user.ID, postID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Liked successfully"})
+}
+
+func unlikeHandler(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value("user").(*auth.User)
+	postID := chi.URLParam(r, "postId")
+
+	_, err := db.Exec(`
+		DELETE FROM likes
+		WHERE user_id = $1 AND post_id = $2`,
+		user.ID, postID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Unliked successfully"})
+}
+
+func getLikesHandler(w http.ResponseWriter, r *http.Request) {
+	postID := chi.URLParam(r, "postId")
+
+	var count int
+	err := db.Get(&count, `
+		SELECT COUNT(*) FROM likes
+		WHERE post_id = $1`, postID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]int{"count": count})
+}
+
+func isLikedHandler(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value("user").(*auth.User)
+	postID := chi.URLParam(r, "postId")
+
+	var count int
+	err := db.Get(&count, `
+		SELECT COUNT(*) FROM likes
+		WHERE user_id = $1 AND post_id = $2`,
+		user.ID, postID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]bool{"is_liked": count > 0})
+}
+
+// Feed handler
+func getFeedHandler(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value("user").(*auth.User)
+
+	page := 1
+	perPage := 20
+
+	if p := r.URL.Query().Get("page"); p != "" {
+		if parsed, err := strconv.Atoi(p); err == nil && parsed > 0 {
+			page = parsed
+		}
+	}
+
+	if pp := r.URL.Query().Get("per_page"); pp != "" {
+		if parsed, err := strconv.Atoi(pp); err == nil && parsed > 0 {
+			perPage = parsed
+		}
+	}
+
+	offset := (page - 1) * perPage
+
+	var posts []struct {
+		Post
+		AuthorImageURL string `json:"author_image_url" db:"author_image_url"`
+		LikeCount      int    `json:"like_count" db:"like_count"`
+		IsLiked        bool   `json:"is_liked" db:"is_liked"`
+	}
+
+	err := db.Select(&posts, `
+		SELECT 
+			p.id, p.author_id, u.display_name as author_name, p.body, p.created_at,
+			up.profile_image_url as author_image_url,
+			COALESCE(l.count, 0) as like_count,
+			CASE WHEN ul.user_id IS NOT NULL THEN true ELSE false END as is_liked
+		FROM posts p
+		JOIN users u ON p.author_id = u.id
+		LEFT JOIN user_profiles up ON u.id = up.user_id
+		LEFT JOIN (
+			SELECT post_id, COUNT(*) as count 
+			FROM likes 
+			GROUP BY post_id
+		) l ON p.id = l.post_id
+		LEFT JOIN likes ul ON p.id = ul.post_id AND ul.user_id = $1
+		WHERE p.author_id = $1 
+			OR p.author_id IN (
+				SELECT following_id 
+				FROM followers 
+				WHERE follower_id = $1
+			)
+		ORDER BY p.created_at DESC
+		LIMIT $2 OFFSET $3`,
+		user.ID, perPage, offset)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(posts)
 }
 
 func activitiesStreamHandler(w http.ResponseWriter, r *http.Request) {

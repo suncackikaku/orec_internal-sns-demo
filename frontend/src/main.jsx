@@ -10,6 +10,7 @@ import UserProfilePage from './pages/UserProfilePage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import ProfileEditPage from './pages/ProfileEditPage'
+import FeedPage from './pages/FeedPage'
 import './index.css'
 
 function PrivateRoute({ children }) {
@@ -64,6 +65,13 @@ function App() {
           <Route path="/users/me/profile/edit" element={
             <PrivateRoute>
               <ProfileEditPage />
+            </PrivateRoute>
+          } />
+          
+          {/* フィード */}
+          <Route path="/feed" element={
+            <PrivateRoute>
+              <FeedPage />
             </PrivateRoute>
           } />
         </Routes>

@@ -26,7 +26,7 @@ function UsersListPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [searchKeyword, setSearchKeyword] = useState('')
-  const [selectedDepartment, setSelectedDepartment] = useState('')
+  const [selectedDepartment, setSelectedDepartment] = useState(undefined)
   const [page, setPage] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
@@ -148,7 +148,6 @@ function UsersListPage() {
                 <SelectValue placeholder="全ての部署" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">全ての部署</SelectItem>
                 {departments.map(dept => (
                   <SelectItem key={dept.id} value={dept.id.toString()}>
                     {dept.name}

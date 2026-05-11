@@ -9,7 +9,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
-import { Search, X, Settings, Building2, Users, Bell } from 'lucide-react'
+import { Search, X, Settings, Building2, Users, Bell, MessageSquare, Heart } from 'lucide-react'
+import {
+  Item,
+  ItemContent,
+  ItemDescription,
+  ItemGroup,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item"
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
@@ -181,7 +189,18 @@ function WelcomePage() {
           </h1>
 
           {/* クイックアクセスメニュー */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
+            <Card 
+              className="cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => navigate('/feed')}
+            >
+              <CardHeader className="text-center">
+                <Heart className="h-10 w-10 mx-auto text-primary mb-2" />
+                <CardTitle>フィード</CardTitle>
+                <CardDescription>フォロー中の投稿</CardDescription>
+              </CardHeader>
+            </Card>
+
             <Card 
               className="cursor-pointer hover:shadow-lg transition-shadow"
               onClick={() => navigate('/departments')}
@@ -227,16 +246,28 @@ function WelcomePage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div ref={activitiesRef} className="space-y-3">
+                <ItemGroup ref={activitiesRef} className="gap-3">
                   {activities.map(activity => (
-                    <div key={activity.id} className="p-3 bg-muted rounded-lg border-l-4 border-primary">
-                      <div className="text-sm text-foreground">{activity.message}</div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {formatTimeAgo(activity.created_at)}
-                      </div>
-                    </div>
+                    <Item key={activity.id} variant="outline" className="cursor-pointer hover:bg-muted/80">
+                      <Avatar className="h-8 w-8 flex-shrink-0">
+                        <AvatarFallback className="text-xs bg-primary/10 text-primary font-bold">
+                          {activity.actor_name?.charAt(0) || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                      
+                      <ItemContent>
+                        <ItemTitle className="line-clamp-2">
+                          {activity.message}
+                        </ItemTitle>
+                        <ItemDescription className="flex items-center gap-1">
+                          <span>{activity.actor_name || 'Unknown'}</span>
+                          <span>·</span>
+                          <span>{formatTimeAgo(activity.created_at)}</span>
+                        </ItemDescription>
+                      </ItemContent>
+                    </Item>
                   ))}
-                </div>
+                </ItemGroup>
               </CardContent>
             </Card>
           )}

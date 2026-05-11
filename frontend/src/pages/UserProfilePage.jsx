@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
-import { ArrowLeft, Edit, LogOut, User } from 'lucide-react'
+import { ArrowLeft, Edit, LogOut, User, Heart, UserPlus, UserMinus } from 'lucide-react'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
@@ -17,6 +17,8 @@ function UserProfilePage() {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [isFollowing, setIsFollowing] = useState(false)
+  const [followLoading, setFollowLoading] = useState(false)
 
   const isMyProfile = user && user.id === id
 
@@ -37,6 +39,44 @@ function UserProfilePage() {
         setLoading(false)
       })
   }, [id])
+
+  useEffect(() => {
+    if (!isMyProfile && user) {
+      checkFollowing()
+    }
+  }, [id, user])
+
+  const checkFollowing = async () => {
+    try {
+      const res = await fetch(`${API_URL}/users/${id}/is-following`, {
+        headers: getAuthHeaders()
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setIsFollowing(data.is_following)
+      }
+    } catch (err) {
+      console.error('Failed to check following:', err)
+    }
+  }
+
+  const handleFollow = async () => {
+    setFollowLoading(true)
+    try {
+      const method = isFollowing ? 'DELETE' : 'POST'
+      const res = await fetch(`${API_URL}/users/${id}/follow`, {
+        method,
+        headers: getAuthHeaders()
+      })
+      if (res.ok) {
+        setIsFollowing(!isFollowing)
+      }
+    } catch (err) {
+      console.error('Failed to toggle follow:', err)
+    } finally {
+      setFollowLoading(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -85,13 +125,32 @@ function UserProfilePage() {
             <p className="text-foreground italic max-w-md mx-auto">{profile.bio}</p>
           )}
           
-          {isMyProfile && (
+          {isMyProfile ? (
             <Button
               className="mt-4"
               onClick={() => navigate('/users/me/profile/edit')}
             >
               <Edit className="h-4 w-4 mr-2" />
               プロフィールを編集
+            </Button>
+          ) : (
+            <Button
+              className="mt-4"
+              variant={isFollowing ? "outline" : "default"}
+              onClick={handleFollow}
+              disabled={followLoading}
+            >
+              {isFollowing ? (
+                <>
+                  <UserMinus className="h-4 w-4 mr-2" />
+                  フォロー解除
+                </>
+              ) : (
+                <>
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  フォローする
+                </>
+              )}
             </Button>
           )}
         </div>

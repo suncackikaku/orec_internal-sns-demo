@@ -47,6 +47,30 @@ CREATE TABLE activities (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- フォロー機能
+CREATE TABLE followers (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    follower_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    following_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(follower_id, following_id)
+);
+
+-- いいね機能
+CREATE TABLE likes (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    post_id UUID REFERENCES posts(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, post_id)
+);
+
+-- フィード用インデックス
+CREATE INDEX idx_followers_following ON followers(following_id);
+CREATE INDEX idx_followers_follower ON followers(follower_id);
+CREATE INDEX idx_likes_post ON likes(post_id);
+CREATE INDEX idx_likes_user ON likes(user_id);
+
 -- users.updated_at を自動更新するトリガー
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
