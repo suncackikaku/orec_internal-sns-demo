@@ -1,0 +1,25 @@
+# Dependencies
+frontend/node_modules/
+api/vendor/
+
+# Build outputs
+frontend/dist/
+api/api
+
+# Environment variables
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Database
+db_data/

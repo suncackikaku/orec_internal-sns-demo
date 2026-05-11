@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { useAutoAnimate } from '@formkit/auto-animate/react'
 import SearchResults from '../components/SearchResults'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
@@ -13,6 +14,7 @@ function WelcomePage() {
   const [searchKeyword, setSearchKeyword] = useState('')
   const [showResults, setShowResults] = useState(false)
   const [activities, setActivities] = useState([])
+  const [activitiesRef] = useAutoAnimate()
 
   useEffect(() => {
     if (user) {
@@ -206,7 +208,7 @@ function WelcomePage() {
         {(activities?.length || 0) > 0 && (
           <div style={styles.activitiesSection}>
             <h3 style={styles.activitiesTitle}>📢 お知らせ</h3>
-            <div style={styles.activitiesList}>
+            <div ref={activitiesRef} style={styles.activitiesList}>
               {activities.map(activity => (
                 <div key={activity.id} style={styles.activityItem}>
                   <div style={styles.activityMessage}>{activity.message}</div>
