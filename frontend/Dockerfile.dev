@@ -1,0 +1,14 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# パッケージファイルをコピー
+COPY package*.json ./
+RUN npm install
+
+# ソースコードはボリュームマウントで提供
+# ViteのHMR（Hot Module Replacement）を有効化
+
+EXPOSE 3000
+
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

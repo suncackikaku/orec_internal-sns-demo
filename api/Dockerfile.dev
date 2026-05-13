@@ -1,0 +1,17 @@
+FROM golang:1.21-alpine
+
+WORKDIR /app
+
+# 必要なツールをインストール
+RUN apk add --no-cache git
+
+# モジュールキャッシュ用ボリュームを使用
+COPY go.mod go.sum ./
+RUN go mod download
+
+# ソースコードはボリュームマウントで提供
+# ホットリロードなし（go run使用）
+
+EXPOSE 8080
+
+CMD ["go", "run", "main.go"]

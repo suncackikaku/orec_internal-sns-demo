@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: sns-db-dev
+    environment:
+      POSTGRES_USER: snsuser
+      POSTGRES_PASSWORD: snspassword
+      POSTGRES_DB: snsdb
+    volumes:
+      - db_data_dev:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U snsuser -d snsdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile.dev
+    container_name: sns-api-dev
+    env_file:
+      - .env.local
+    environment:
+      DATABASE_URL: postgres://snsuser:snspassword@db:5432/snsdb?sslmode=disable
+      PORT: 8080
+      GO_ENV: development
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./api:/app
+      - go_mod_cache:/go/pkg/mod
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["go", "run", "main.go"]
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: sns-frontend-dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=/api
+      - CHOKIDAR_USEPOLLING=true
+    depends_on:
+      - api
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+
+volumes:
+  db_data_dev:
+  go_mod_cache:
