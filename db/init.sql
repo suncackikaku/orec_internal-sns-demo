@@ -16,7 +16,8 @@ CREATE TABLE users (
     email VARCHAR(255) UNIQUE,
     password_hash VARCHAR(255),
     auth_provider VARCHAR(50) DEFAULT 'local',
-    lineworks_id VARCHAR(255),
+    woff_id VARCHAR(255) UNIQUE,
+    domain_id VARCHAR(255),
     primary_department_id UUID REFERENCES departments(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -70,6 +71,7 @@ CREATE INDEX idx_followers_following ON followers(following_id);
 CREATE INDEX idx_followers_follower ON followers(follower_id);
 CREATE INDEX idx_likes_post ON likes(post_id);
 CREATE INDEX idx_likes_user ON likes(user_id);
+CREATE INDEX idx_users_woff_id ON users(woff_id);
 
 -- users.updated_at を自動更新するトリガー
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -94,13 +96,13 @@ INSERT INTO departments (id, name, catchcopy, description, cover_image_url, mana
 
 -- Insert demo users with email/password (password: 'password123')
 INSERT INTO users (id, display_name, email, password_hash, auth_provider, primary_department_id) VALUES
-('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '山田太郎', 'yamada@example.com', '$2a$10$RV1yFBFcHJbWuAhJp3w9DuZ3dokyb4w5uulijerVuUG0n9tDxWcy6', 'local', '11111111-1111-1111-1111-111111111111'),
-('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '佐藤花子', 'sato@example.com', '$2a$10$RV1yFBFcHJbWuAhJp3w9DuZ3dokyb4w5uulijerVuUG0n9tDxWcy6', 'local', '11111111-1111-1111-1111-111111111111'),
-('cccccccc-cccc-cccc-cccc-cccccccccccc', '鈴木一郎', 'suzuki@example.com', '$2a$10$RV1yFBFcHJbWuAhJp3w9DuZ3dokyb4w5uulijerVuUG0n9tDxWcy6', 'local', '22222222-2222-2222-2222-222222222222'),
-('dddddddd-dddd-dddd-dddd-dddddddddddd', '田中美咲', 'tanaka@example.com', '$2a$10$RV1yFBFcHJbWuAhJp3w9DuZ3dokyb4w5uulijerVuUG0n9tDxWcy6', 'local', '22222222-2222-2222-2222-222222222222'),
-('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', '高橋健太', 'takahashi@example.com', '$2a$10$RV1yFBFcHJbWuAhJp3w9DuZ3dokyb4w5uulijerVuUG0n9tDxWcy6', 'local', '33333333-3333-3333-3333-333333333333'),
-('ffffffff-ffff-ffff-ffff-ffffffffffff', '伊藤さくら', 'ito@example.com', '$2a$10$RV1yFBFcHJbWuAhJp3w9DuZ3dokyb4w5uulijerVuUG0n9tDxWcy6', 'local', '11111111-1111-1111-1111-111111111111'),
-('77777777-7777-7777-7777-777777777777', '渡辺隆', 'watanabe@example.com', '$2a$10$RV1yFBFcHJbWuAhJp3w9DuZ3dokyb4w5uulijerVuUG0n9tDxWcy6', 'local', '22222222-2222-2222-2222-222222222222');
+('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '山田太郎', 'yamada@example.com', '\$2a\$10\$RV1yFBFcHJbWuAhJp3w9DuZ3dokyb4w5uulijerVuUG0n9tDxWcy6', 'local', '11111111-1111-1111-1111-111111111111'),
+('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '佐藤花子', 'sato@example.com', '\$2a\$10\$RV1yFBFcHJbWuAhJp3w9DuZ3dokyb4w5uulijerVuUG0n9tDxWcy6', 'local', '11111111-1111-1111-1111-111111111111'),
+('cccccccc-cccc-cccc-cccc-cccccccccccc', '鈴木一郎', 'suzuki@example.com', '\$2a\$10\$RV1yFBFcHJbWuAhJp3w9DuZ3dokyb4w5uulijerVuUG0n9tDxWcy6', 'local', '22222222-2222-2222-2222-222222222222'),
+('dddddddd-dddd-dddd-dddd-dddddddddddd', '田中美咲', 'tanaka@example.com', '\$2a\$10\$RV1yFBFcHJbWuAhJp3w9DuZ3dokyb4w5uulijerVuUG0n9tDxWcy6', 'local', '22222222-2222-2222-2222-222222222222'),
+('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', '高橋健太', 'takahashi@example.com', '\$2a\$10\$RV1yFBFcHJbWuAhJp3w9DuZ3dokyb4w5uulijerVuUG0n9tDxWcy6', 'local', '33333333-3333-3333-3333-333333333333'),
+('ffffffff-ffff-ffff-ffff-ffffffffffff', '伊藤さくら', 'ito@example.com', '\$2a\$10\$RV1yFBFcHJbWuAhJp3w9DuZ3dokyb4w5uulijerVuUG0n9tDxWcy6', 'local', '11111111-1111-1111-1111-111111111111'),
+('77777777-7777-7777-7777-777777777777', '渡辺隆', 'watanabe@example.com', '\$2a\$10\$RV1yFBFcHJbWuAhJp3w9DuZ3dokyb4w5uulijerVuUG0n9tDxWcy6', 'local', '22222222-2222-2222-2222-222222222222');
 
 INSERT INTO user_profiles (user_id, bio, hobbies, skills, joined_year, career_history, profile_image_url) VALUES
 ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '技術の力で世界を変えたい', 'プログラミング、読書、登山', 'Go, React, Kubernetes, AWS', 2018, '2018年 新卒入社\n2019年 クラウド基盤構築プロジェクト参画\n2021年 技術開発部 リードエンジニア就任', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200'),
@@ -120,7 +122,4 @@ INSERT INTO posts (id, author_id, body, created_at) VALUES
 ('11111111-1111-1111-1111-111111111112', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '新しいマイクロサービスアーキテクチャの設計が完了しました！来週から開発開始です。', '2024-05-01 09:00:00+09'),
 ('22222222-2222-2222-2222-222222222223', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '新しいデザインシステムのガイドラインを公開しました。ぜひご確認ください。', '2024-05-02 14:30:00+09'),
 ('33333333-3333-3333-3333-333333333334', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '週末の技術勉強会、今回はGoの並行処理について深く掘り下げます。', '2024-05-03 11:00:00+09'),
-('44444444-4444-4444-4444-444444444445', 'ffffffff-ffff-ffff-ffff-ffffffffffff', 'Rustで書いたWebAssemblyモジュール、パフォーマンスが予想以上に良くて驚いています。', '2024-05-04 16:00:00+09'),
-('55555555-5555-5555-5555-555555555556', 'cccccccc-cccc-cccc-cccc-cccccccccccc', '今月の営業目標達成しました！チームのみんなありがとう！', '2024-05-05 10:00:00+09'),
-('66666666-6666-6666-6666-666666666667', 'dddddddd-dddd-dddd-dddd-dddddddddddd', '新しいSNSキャンペーンの効果測定結果が出ました。CTRが前月比150%です！', '2024-05-06 13:00:00+09'),
-('77777777-7777-7777-7777-777777777778', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', '機械学習モデルの精度が92%に到達。本番適用に向けて最終調整中です。', '2024-05-07 15:00:00+09');
+('44444444-4444-4444-4444-444444444445', 'ffffffff-ffff-ffff-ffff-fffffff

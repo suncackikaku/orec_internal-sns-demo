@@ -173,6 +173,44 @@ var activityChannel = make(chan Activity, 100)
 var activityClients = make(map[chan Activity]bool)
 var activityClientsMutex sync.Mutex
 
+
+func (d *DBAuth) GetUserByWoffID(woffID string) (*auth.User, error) {
+	var user auth.User
+	err := d.db.Get(&user, `
+		SELECT id, display_name, email, primary_department_id 
+		FROM users 
+		WHERE woff_id = $1`, woffID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, auth.ErrUserNotFound
+		}
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (d *DBAuth) CreateWoffUser(woffID, displayName, domainID string) (*auth.User, error) {
+	var userID string
+	err := d.db.QueryRow(`
+		INSERT INTO users (id, display_name, email, auth_provider, woff_id, domain_id, primary_department_id)
+		VALUES (gen_random_uuid()::text, $1, $2, 'woff', $3, $4, NULL)
+		RETURNING id`,
+		displayName, fmt.Sprintf("%s@lineworks", woffID), woffID, domainID).Scan(&userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create empty profile
+	_, err = d.db.Exec(`
+		INSERT INTO user_profiles (user_id)
+		VALUES ($1)`, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return d.GetUserByID(userID)
+}
+
 func main() {
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
@@ -206,6 +244,7 @@ func main() {
 	// Public routes
 	r.Post("/api/auth/register", registerHandler)
 	r.Post("/api/auth/login", loginHandler)
+	r.Post("/api/auth/woff", woffAuthHandler)
 	r.Get("/api/departments", getDepartmentsList)
 	r.Get("/api/departments/{deptId}", getDepartment)
 	r.Get("/api/users/{userId}/profile", getUserProfile)
@@ -248,6 +287,7 @@ func main() {
 
 func authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
 		var tokenString string
 
 		// Try Authorization header first
@@ -1011,4 +1051,48 @@ func activitiesStreamHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+}
+
+func woffAuthHandler(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		UserID      string `json:"userId"`
+		DisplayName string `json:"displayName"`
+		DomainID    string `json:"domainId"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	dbAuth := &DBAuth{db: db}
+	
+	// Check if user already exists with this WOFF ID
+	user, err := dbAuth.GetUserByWoffID(req.UserID)
+	if err != nil {
+		if err == auth.ErrUserNotFound {
+			// Create new user
+			user, err = dbAuth.CreateWoffUser(req.UserID, req.DisplayName, req.DomainID)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			
+			// Create activity for new user registration
+			activityMessage := fmt.Sprintf("%sさんが新規追加されました", req.DisplayName)
+			createActivity(user.ID, "user_registered", activityMessage)
+		} else {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Generate token
+	token, err := authenticator.GenerateToken(user)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(AuthResponse{Token: token, User: *user})
 }
