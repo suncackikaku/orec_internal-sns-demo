@@ -173,7 +173,6 @@ var activityChannel = make(chan Activity, 100)
 var activityClients = make(map[chan Activity]bool)
 var activityClientsMutex sync.Mutex
 
-
 func (d *DBAuth) GetUserByWoffID(woffID string) (*auth.User, error) {
 	var user auth.User
 	err := d.db.Get(&user, `
@@ -193,8 +192,8 @@ func (d *DBAuth) CreateWoffUser(woffID, displayName, domainID string) (*auth.Use
 	var userID string
 	err := d.db.QueryRow(`
 		INSERT INTO users (id, display_name, email, auth_provider, woff_id, domain_id, primary_department_id)
-		VALUES (gen_random_uuid()::text, $1, $2, 'woff', $3, $4, NULL)
-		RETURNING id`,
+		VALUES (gen_random_uuid(), $1, $2, 'woff', $3, $4, NULL)
+		RETURNING id::text`,
 		displayName, fmt.Sprintf("%s@lineworks", woffID), woffID, domainID).Scan(&userID)
 	if err != nil {
 		return nil, err
@@ -1065,7 +1064,7 @@ func woffAuthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	dbAuth := &DBAuth{db: db}
-	
+
 	// Check if user already exists with this WOFF ID
 	user, err := dbAuth.GetUserByWoffID(req.UserID)
 	if err != nil {
@@ -1076,7 +1075,7 @@ func woffAuthHandler(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			
+
 			// Create activity for new user registration
 			activityMessage := fmt.Sprintf("%sさんが新規追加されました", req.DisplayName)
 			createActivity(user.ID, "user_registered", activityMessage)
