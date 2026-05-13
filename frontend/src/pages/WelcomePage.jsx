@@ -185,7 +185,7 @@ function WelcomePage() {
 
           {/* ウェルカムメッセージ */}
           <h1 className="text-2xl font-bold text-center text-foreground">
-            ようこそああ、{user?.display_name}さん
+            ようこそ、{user?.display_name}さん
           </h1>
 
           {/* クイックアクセスメニュー */}

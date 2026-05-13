@@ -490,7 +490,7 @@ func getDepartment(w http.ResponseWriter, r *http.Request) {
 
 	var members []User
 	err = db.Select(&members, `
-		SELECT u.id, u.display_name, u.primary_department_id, up.profile_image_url 
+		SELECT u.id, u.display_name, u.primary_department_id, COALESCE(up.profile_image_url, '') as profile_image_url 
 		FROM users u 
 		LEFT JOIN user_profiles up ON u.id = up.user_id 
 		WHERE u.primary_department_id = $1`, deptID)
@@ -526,8 +526,8 @@ func getUserProfile(w http.ResponseWriter, r *http.Request) {
 
 	var profile UserProfile
 	err := db.Get(&profile, `
-		SELECT u.id as user_id, u.display_name, u.email, up.bio, up.hobbies, up.skills, 
-			up.joined_year, up.career_history, up.profile_image_url, d.name as department_name 
+		SELECT u.id as user_id, u.display_name, u.email, COALESCE(up.bio, '') as bio, COALESCE(up.hobbies, '') as hobbies, COALESCE(up.skills, '') as skills, 
+			COALESCE(up.joined_year, 0) as joined_year, COALESCE(up.career_history, '') as career_history, COALESCE(up.profile_image_url, '') as profile_image_url, COALESCE(d.name, '') as department_name 
 		FROM users u 
 		LEFT JOIN user_profiles up ON u.id = up.user_id 
 		LEFT JOIN departments d ON u.primary_department_id = d.id 
@@ -558,7 +558,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	// 社員検索
 	var users []SearchUser
 	err := db.Select(&users, `
-		SELECT u.id, u.display_name, d.name as department_name, up.profile_image_url,
+		SELECT u.id, u.display_name, COALESCE(d.name, '') as department_name, COALESCE(up.profile_image_url, '') as profile_image_url,
 			CASE 
 				WHEN u.display_name ILIKE $1 THEN 'name'
 				WHEN up.skills ILIKE $1 THEN 'skills'
@@ -691,7 +691,7 @@ func getUsersList(w http.ResponseWriter, r *http.Request) {
 
 	var users []UserListItem
 	query := `
-		SELECT u.id, u.display_name, d.name as department_name, up.profile_image_url
+		SELECT u.id, u.display_name, COALESCE(d.name, '') as department_name, COALESCE(up.profile_image_url, '') as profile_image_url
 		FROM users u
 		LEFT JOIN user_profiles up ON u.id = up.user_id
 		LEFT JOIN departments d ON u.primary_department_id = d.id
@@ -813,7 +813,7 @@ func getFollowersHandler(w http.ResponseWriter, r *http.Request) {
 
 	var followers []User
 	err := db.Select(&followers, `
-		SELECT u.id, u.display_name, up.profile_image_url
+		SELECT u.id, u.display_name, COALESCE(up.profile_image_url, '') as profile_image_url
 		FROM followers f
 		JOIN users u ON f.follower_id = u.id
 		LEFT JOIN user_profiles up ON u.id = up.user_id
@@ -833,7 +833,7 @@ func getFollowingHandler(w http.ResponseWriter, r *http.Request) {
 
 	var following []User
 	err := db.Select(&following, `
-		SELECT u.id, u.display_name, up.profile_image_url
+		SELECT u.id, u.display_name, COALESCE(up.profile_image_url, '') as profile_image_url
 		FROM followers f
 		JOIN users u ON f.following_id = u.id
 		LEFT JOIN user_profiles up ON u.id = up.user_id
@@ -967,7 +967,7 @@ func getFeedHandler(w http.ResponseWriter, r *http.Request) {
 	err := db.Select(&posts, `
 		SELECT 
 			p.id, p.author_id, u.display_name as author_name, p.body, p.created_at,
-			up.profile_image_url as author_image_url,
+			COALESCE(up.profile_image_url, '') as author_image_url,
 			COALESCE(l.count, 0) as like_count,
 			CASE WHEN ul.user_id IS NOT NULL THEN true ELSE false END as is_liked
 		FROM posts p
