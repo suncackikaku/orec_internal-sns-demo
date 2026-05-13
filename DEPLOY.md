@@ -213,3 +213,50 @@ docker-compose down && docker-compose up -d
 - **本番環境**では `BASE_URL` を実際のドメインに設定
 - **Firewall** で必要なポートを開放
 - **定期バックアップ**を設定することを推奨
+
+
+本番環境更新手順
+方法1: deploy.sh を使用（推奨）
+cd /opt/sns-app  # プロジェクトディレクトリ
+./deploy.sh
+このスクリプトは以下を自動実行：
+1. バックアップ作成
+2. 古いコンテナ停止
+3. 最新コード取得（git pull）
+4. Dockerイメージ再ビルド
+5. コンテナ起動
+6. ヘルスチェック
+
+
+方法2: 手動更新
+cd /opt/sns-app
+# 1. 最新コード取得
+git pull origin main
+# 2. コンテナ停止・削除
+docker-compose down
+# 3. イメージ再ビルド（キャッシュなし）
+docker-compose build --no-cache
+# 4. コンテナ起動
+docker-compose up -d
+# 5. ログ確認
+docker-compose logs -f
+
+
+方法3: 変更箇所のみ更新（今回の場合）
+今回はGoバックエンドのみ変更なので：
+cd /opt/sns-app
+# コード更新
+git pull origin main
+# APIのみ再ビルド・再起動
+docker-compose build --no-cache api
+docker-compose up -d api
+# 確認
+docker-compose logs api
+確認コマンド
+# コンテナ状態確認
+docker-compose ps
+# APIログ確認
+docker-compose logs -f api
+# ヘルスチェック
+curl https://orec-demo-app.suncac.net/api/departments
+注意: フロントエンドも変更している場合は、frontendコンテナも再ビルドが必要です。
