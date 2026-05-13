@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"database/sql"
 	"errors"
 	"time"
 
@@ -24,10 +25,10 @@ type Authenticator interface {
 
 // User represents an authenticated user
 type User struct {
-	ID           string `json:"id" db:"id"`
-	DisplayName  string `json:"display_name" db:"display_name"`
-	Email        string `json:"email" db:"email"`
-	DepartmentID string `json:"primary_department_id" db:"primary_department_id"`
+	ID           string         `json:"id" db:"id"`
+	DisplayName  string         `json:"display_name" db:"display_name"`
+	Email        string         `json:"email" db:"email"`
+	DepartmentID sql.NullString `json:"primary_department_id" db:"primary_department_id"`
 }
 
 // JWTClaims represents JWT claims
@@ -86,7 +87,7 @@ func (a *LocalAuthenticator) GenerateToken(user *User) (string, error) {
 		UserID:       user.ID,
 		DisplayName:  user.DisplayName,
 		Email:        user.Email,
-		DepartmentID: user.DepartmentID,
+		DepartmentID: user.DepartmentID.String,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -112,7 +113,7 @@ func (a *LocalAuthenticator) ValidateToken(tokenString string) (*User, error) {
 			ID:           claims.UserID,
 			DisplayName:  claims.DisplayName,
 			Email:        claims.Email,
-			DepartmentID: claims.DepartmentID,
+			DepartmentID: sql.NullString{String: claims.DepartmentID, Valid: true},
 		}, nil
 	}
 

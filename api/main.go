@@ -67,10 +67,10 @@ type Department struct {
 }
 
 type User struct {
-	ID                  string `json:"id" db:"id"`
-	DisplayName         string `json:"display_name" db:"display_name"`
-	PrimaryDepartmentID string `json:"primary_department_id" db:"primary_department_id"`
-	ProfileImageURL     string `json:"profile_image_url" db:"profile_image_url"`
+	ID                  string         `json:"id" db:"id"`
+	DisplayName         string         `json:"display_name" db:"display_name"`
+	PrimaryDepartmentID sql.NullString `json:"primary_department_id" db:"primary_department_id"`
+	ProfileImageURL     string         `json:"profile_image_url" db:"profile_image_url"`
 }
 
 type UserProfile struct {

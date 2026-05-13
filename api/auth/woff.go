@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -59,34 +60,34 @@ func NewWoffAuthenticator(clientID, clientSecret, secretKey string, db DBInterfa
 // GetAccessToken gets access token from LINE WORKS
 func (a *WoffAuthenticator) GetAccessToken() (*WoffTokenResponse, error) {
 	url := "https://auth.worksmobile.com/oauth2/v2.0/token"
-	
+
 	data := fmt.Sprintf("grant_type=client_credentials&client_id=%s&client_secret=%s&scope=bot",
 		a.clientID, a.clientSecret)
-	
+
 	req, err := http.NewRequest("POST", url, strings.NewReader(data))
 	if err != nil {
 		return nil, err
 	}
-	
+
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	
+
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("failed to get access token: %s", string(body))
 	}
-	
+
 	var tokenResp WoffTokenResponse
 	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
 		return nil, err
 	}
-	
+
 	return &tokenResp, nil
 }
 
@@ -97,34 +98,34 @@ func (a *WoffAuthenticator) VerifyWoffUser(userID, domainID string) (*WoffUserIn
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Call LINE WORKS API to verify user
 	url := fmt.Sprintf("https://www.worksapis.com/v1.0/users/%s", userID)
-	
+
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token.AccessToken))
-	
+
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("failed to verify user: %s", string(body))
 	}
-	
+
 	var userInfo WoffUserInfo
 	if err := json.NewDecoder(resp.Body).Decode(&userInfo); err != nil {
 		return nil, err
 	}
-	
+
 	return &userInfo, nil
 }
 
@@ -132,7 +133,7 @@ func (a *WoffAuthenticator) VerifyWoffUser(userID, domainID string) (*WoffUserIn
 func (a *WoffAuthenticator) AuthenticateWoffUser(req *WoffAuthRequest) (*User, error) {
 	// For now, we'll trust the WOFF SDK validation and create/login the user
 	// In production, you might want to verify with LINE WORKS API
-	
+
 	// Check if user exists
 	user, err := a.db.GetUserByID(req.UserID)
 	if err != nil {
@@ -142,7 +143,7 @@ func (a *WoffAuthenticator) AuthenticateWoffUser(req *WoffAuthRequest) (*User, e
 		}
 		return nil, err
 	}
-	
+
 	return user, nil
 }
 
@@ -152,7 +153,7 @@ func (a *WoffAuthenticator) GenerateToken(user *User) (string, error) {
 		UserID:       user.ID,
 		DisplayName:  user.DisplayName,
 		Email:        user.Email,
-		DepartmentID: user.DepartmentID,
+		DepartmentID: user.DepartmentID.String,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -178,7 +179,7 @@ func (a *WoffAuthenticator) ValidateToken(tokenString string) (*User, error) {
 			ID:           claims.UserID,
 			DisplayName:  claims.DisplayName,
 			Email:        claims.Email,
-			DepartmentID: claims.DepartmentID,
+			DepartmentID: sql.NullString{String: claims.DepartmentID, Valid: true},
 		}, nil
 	}
 
