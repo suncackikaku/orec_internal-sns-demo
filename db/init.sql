@@ -66,6 +66,15 @@ CREATE TABLE likes (
     UNIQUE(user_id, post_id)
 );
 
+-- 管理者テーブル
+CREATE TABLE admins (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    display_name TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- フィード用インデックス
 CREATE INDEX idx_followers_following ON followers(following_id);
 CREATE INDEX idx_followers_follower ON followers(follower_id);
@@ -117,6 +126,10 @@ INSERT INTO user_profiles (user_id, bio, hobbies, skills, joined_year, career_hi
 UPDATE departments SET manager_user_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' WHERE id = '11111111-1111-1111-1111-111111111111';
 UPDATE departments SET manager_user_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc' WHERE id = '22222222-2222-2222-2222-222222222222';
 UPDATE departments SET manager_user_id = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee' WHERE id = '33333333-3333-3333-3333-333333333333';
+
+-- Insert admin user (password: admin123)
+INSERT INTO admins (id, email, password_hash, display_name) VALUES
+('99999999-9999-9999-9999-999999999999', 'admin@example.com', '$2a$10$RV1yFBFcHJbWuAhJp3w9DuZ3dokyb4w5uulijerVuUG0n9tDxWcy6', 'システム管理者');
 
 INSERT INTO posts (id, author_id, body, created_at) VALUES
 ('11111111-1111-1111-1111-111111111112', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '新しいマイクロサービスアーキテクチャの設計が完了しました！来週から開発開始です。', '2024-05-01 09:00:00+09'),

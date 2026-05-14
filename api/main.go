@@ -57,6 +57,41 @@ func (d *DBAuth) GetUserByID(id string) (*auth.User, error) {
 	return &user, nil
 }
 
+// DBAdminAuth implements auth.AdminDBInterface
+type DBAdminAuth struct {
+	db *sqlx.DB
+}
+
+func (d *DBAdminAuth) GetAdminByEmail(email string) (*auth.Admin, error) {
+	var admin auth.Admin
+	err := d.db.Get(&admin, `
+		SELECT id, email, display_name 
+		FROM admins 
+		WHERE email = $1`, email)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, auth.ErrAdminNotFound
+		}
+		return nil, err
+	}
+	return &admin, nil
+}
+
+func (d *DBAdminAuth) GetAdminByID(id string) (*auth.Admin, error) {
+	var admin auth.Admin
+	err := d.db.Get(&admin, `
+		SELECT id, email, display_name 
+		FROM admins 
+		WHERE id = $1`, id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, auth.ErrAdminNotFound
+		}
+		return nil, err
+	}
+	return &admin, nil
+}
+
 type Department struct {
 	ID            string         `json:"id" db:"id"`
 	Name          string         `json:"name" db:"name"`
@@ -167,6 +202,7 @@ type Activity struct {
 
 var db *sqlx.DB
 var authenticator *auth.LocalAuthenticator
+var adminAuthenticator *auth.AdminAuthenticator
 
 // ActivityChannel for SSE broadcasting
 var activityChannel = make(chan Activity, 100)
@@ -231,6 +267,10 @@ func main() {
 	dbAuth := &DBAuth{db: db}
 	authenticator = auth.NewLocalAuthenticator(jwtSecret, dbAuth)
 
+	// Initialize admin authenticator
+	dbAdminAuth := &DBAdminAuth{db: db}
+	adminAuthenticator = auth.NewAdminAuthenticator(jwtSecret, dbAdminAuth)
+
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
@@ -273,6 +313,31 @@ func main() {
 
 		// フィード機能
 		r.Get("/api/feed", getFeedHandler)
+	})
+
+	// Admin routes
+	r.Group(func(r chi.Router) {
+		// Public admin routes
+		r.Post("/api/admin/auth/login", adminLoginHandler)
+
+		// Protected admin routes
+		r.Group(func(r chi.Router) {
+			r.Use(adminAuthMiddleware)
+			r.Get("/api/admin/auth/me", adminGetMeHandler)
+
+			// User management
+			r.Get("/api/admin/users", adminGetUsersList)
+			r.Get("/api/admin/users/{userId}", adminGetUserDetail)
+			r.Put("/api/admin/users/{userId}/department", adminUpdateUserDepartment)
+			r.Delete("/api/admin/users/{userId}", adminDeleteUser)
+
+			// Department management
+			r.Get("/api/admin/departments", adminGetDepartmentsList)
+			r.Get("/api/admin/departments/{deptId}", adminGetDepartmentDetail)
+			r.Post("/api/admin/departments", adminCreateDepartment)
+			r.Put("/api/admin/departments/{deptId}", adminUpdateDepartment)
+			r.Delete("/api/admin/departments/{deptId}", adminDeleteDepartment)
+		})
 	})
 
 	port := os.Getenv("PORT")
@@ -1050,6 +1115,349 @@ func activitiesStreamHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+}
+
+// Admin handlers
+func adminAuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var tokenString string
+
+		authHeader := r.Header.Get("Authorization")
+		if authHeader != "" {
+			tokenString = strings.Replace(authHeader, "Bearer ", "", 1)
+		}
+
+		if tokenString == "" {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		admin, err := adminAuthenticator.ValidateToken(tokenString)
+		if err != nil {
+			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			return
+		}
+
+		ctx := r.Context()
+		ctx = context.WithValue(ctx, "admin", admin)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+type AdminLoginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type AdminLoginResponse struct {
+	Token string     `json:"token"`
+	Admin auth.Admin `json:"admin"`
+}
+
+func adminLoginHandler(w http.ResponseWriter, r *http.Request) {
+	var req AdminLoginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var admin struct {
+		auth.Admin
+		PasswordHash string `db:"password_hash"`
+	}
+	err := db.Get(&admin, `
+		SELECT id, email, display_name, password_hash
+		FROM admins
+		WHERE email = $1`, req.Email)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if !adminAuthenticator.CheckPassword(req.Password, admin.PasswordHash) {
+		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		return
+	}
+
+	authAdmin := &auth.Admin{
+		ID:          admin.ID,
+		Email:       admin.Email,
+		DisplayName: admin.DisplayName,
+	}
+	token, err := adminAuthenticator.GenerateToken(authAdmin)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(AdminLoginResponse{Token: token, Admin: *authAdmin})
+}
+
+func adminGetMeHandler(w http.ResponseWriter, r *http.Request) {
+	admin := r.Context().Value("admin").(*auth.Admin)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(admin)
+}
+
+type AdminUserDetail struct {
+	ID              string `json:"id" db:"id"`
+	DisplayName     string `json:"display_name" db:"display_name"`
+	Email           string `json:"email" db:"email"`
+	AuthProvider    string `json:"auth_provider" db:"auth_provider"`
+	DepartmentID    string `json:"department_id" db:"department_id"`
+	DepartmentName  string `json:"department_name" db:"department_name"`
+	ProfileImageURL string `json:"profile_image_url" db:"profile_image_url"`
+	CreatedAt       string `json:"created_at" db:"created_at"`
+}
+
+func adminGetUsersList(w http.ResponseWriter, r *http.Request) {
+	page := 1
+	perPage := 20
+
+	if p := r.URL.Query().Get("page"); p != "" {
+		if parsed, err := strconv.Atoi(p); err == nil && parsed > 0 {
+			page = parsed
+		}
+	}
+
+	if pp := r.URL.Query().Get("per_page"); pp != "" {
+		if parsed, err := strconv.Atoi(pp); err == nil && parsed > 0 {
+			perPage = parsed
+		}
+	}
+
+	searchKeyword := r.URL.Query().Get("q")
+	offset := (page - 1) * perPage
+
+	whereClause := "WHERE 1=1"
+	args := []interface{}{}
+	argCount := 0
+
+	if searchKeyword != "" {
+		argCount++
+		whereClause += fmt.Sprintf(" AND (u.display_name ILIKE $%d OR u.email ILIKE $%d)", argCount, argCount)
+		args = append(args, "%"+searchKeyword+"%")
+	}
+
+	var totalCount int
+	countQuery := "SELECT COUNT(*) FROM users u " + whereClause
+	err := db.Get(&totalCount, countQuery, args...)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	argCount++
+	limitOffset := fmt.Sprintf(" ORDER BY u.created_at DESC LIMIT $%d OFFSET $%d", argCount, argCount+1)
+	args = append(args, perPage, offset)
+
+	var users []AdminUserDetail
+	query := `
+		SELECT u.id, u.display_name, u.email, u.auth_provider, 
+			COALESCE(u.primary_department_id::text, '') as department_id,
+			COALESCE(d.name, '') as department_name,
+			COALESCE(up.profile_image_url, '') as profile_image_url,
+			u.created_at::text as created_at
+		FROM users u
+		LEFT JOIN user_profiles up ON u.id = up.user_id
+		LEFT JOIN departments d ON u.primary_department_id = d.id
+	` + whereClause + limitOffset
+
+	err = db.Select(&users, query, args...)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"users":       users,
+		"total_count": totalCount,
+		"page":        page,
+		"per_page":    perPage,
+	})
+}
+
+func adminGetUserDetail(w http.ResponseWriter, r *http.Request) {
+	userID := chi.URLParam(r, "userId")
+
+	var user AdminUserDetail
+	err := db.Get(&user, `
+		SELECT u.id, u.display_name, u.email, u.auth_provider,
+			COALESCE(u.primary_department_id::text, '') as department_id,
+			COALESCE(d.name, '') as department_name,
+			COALESCE(up.profile_image_url, '') as profile_image_url,
+			u.created_at::text as created_at
+		FROM users u
+		LEFT JOIN user_profiles up ON u.id = up.user_id
+		LEFT JOIN departments d ON u.primary_department_id = d.id
+		WHERE u.id = $1`, userID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "User not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(user)
+}
+
+func adminUpdateUserDepartment(w http.ResponseWriter, r *http.Request) {
+	userID := chi.URLParam(r, "userId")
+
+	var req struct {
+		DepartmentID string `json:"department_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var deptID interface{}
+	if req.DepartmentID == "" {
+		deptID = nil
+	} else {
+		deptID = req.DepartmentID
+	}
+
+	_, err := db.Exec(`
+		UPDATE users
+		SET primary_department_id = $1
+		WHERE id = $2`, deptID, userID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"message": "User department updated successfully"})
+}
+
+func adminDeleteUser(w http.ResponseWriter, r *http.Request) {
+	userID := chi.URLParam(r, "userId")
+
+	_, err := db.Exec(`DELETE FROM users WHERE id = $1`, userID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "User deleted successfully"})
+}
+
+func adminGetDepartmentsList(w http.ResponseWriter, r *http.Request) {
+	var departments []Department
+	err := db.Select(&departments, "SELECT * FROM departments ORDER BY name")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(departments)
+}
+
+func adminGetDepartmentDetail(w http.ResponseWriter, r *http.Request) {
+	deptID := chi.URLParam(r, "deptId")
+
+	var dept Department
+	err := db.Get(&dept, "SELECT * FROM departments WHERE id = $1", deptID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Department not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var memberCount int
+	err = db.Get(&memberCount, `
+		SELECT COUNT(*) FROM users WHERE primary_department_id = $1`, deptID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"department":   dept,
+		"member_count": memberCount,
+	})
+}
+
+type CreateDepartmentRequest struct {
+	Name          string `json:"name"`
+	Catchcopy     string `json:"catchcopy"`
+	Description   string `json:"description"`
+	CoverImageURL string `json:"cover_image_url"`
+}
+
+func adminCreateDepartment(w http.ResponseWriter, r *http.Request) {
+	var req CreateDepartmentRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var deptID string
+	err := db.QueryRow(`
+		INSERT INTO departments (name, catchcopy, description, cover_image_url)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id`,
+		req.Name, req.Catchcopy, req.Description, req.CoverImageURL).Scan(&deptID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"id": deptID, "message": "Department created successfully"})
+}
+
+func adminUpdateDepartment(w http.ResponseWriter, r *http.Request) {
+	deptID := chi.URLParam(r, "deptId")
+
+	var req CreateDepartmentRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	_, err := db.Exec(`
+		UPDATE departments
+		SET name = $1, catchcopy = $2, description = $3, cover_image_url = $4
+		WHERE id = $5`,
+		req.Name, req.Catchcopy, req.Description, req.CoverImageURL, deptID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"message": "Department updated successfully"})
+}
+
+func adminDeleteDepartment(w http.ResponseWriter, r *http.Request) {
+	deptID := chi.URLParam(r, "deptId")
+
+	_, err := db.Exec(`DELETE FROM departments WHERE id = $1`, deptID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Department deleted successfully"})
 }
 
 func woffAuthHandler(w http.ResponseWriter, r *http.Request) {
