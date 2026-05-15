@@ -1322,7 +1322,7 @@ func adminUpdateUserDepartment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var deptID interface{}
-	if req.DepartmentID == "" {
+	if req.DepartmentID == "" || req.DepartmentID == "none" {
 		deptID = nil
 	} else {
 		deptID = req.DepartmentID

@@ -225,7 +225,7 @@ function UserManagementPage() {
                         size="sm"
                         onClick={() => {
                           setEditingUser(user)
-                          setSelectedDepartment(user.department_id || '')
+                          setSelectedDepartment(user.department_id || 'none')
                         }}
                       >
                         <Building2 className="h-4 w-4 mr-1" />
@@ -293,7 +293,7 @@ function UserManagementPage() {
                 <SelectValue placeholder="部署を選択" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">未所属</SelectItem>
+                <SelectItem value="none">未所属</SelectItem>
                 {departments.map((dept) => (
                   <SelectItem key={dept.id} value={dept.id}>
                     {dept.name}
