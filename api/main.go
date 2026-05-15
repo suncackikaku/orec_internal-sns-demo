@@ -305,6 +305,9 @@ func main() {
 		r.Get("/api/users/{userId}/following", getFollowingHandler)
 		r.Get("/api/users/{userId}/is-following", isFollowingHandler)
 
+		// 投稿機能
+		r.Post("/api/posts", createPostHandler)
+
 		// いいね機能
 		r.Post("/api/posts/{postId}/like", likeHandler)
 		r.Delete("/api/posts/{postId}/like", unlikeHandler)
@@ -1339,6 +1342,44 @@ func adminUpdateUserDepartment(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"message": "User department updated successfully"})
+}
+
+func createPostHandler(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value("user").(*auth.User)
+
+	var req struct {
+		Body string `json:"body"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if req.Body == "" {
+		http.Error(w, "Body is required", http.StatusBadRequest)
+		return
+	}
+
+	var postID string
+	err := db.QueryRow(`
+		INSERT INTO posts (author_id, body)
+		VALUES ($1, $2)
+		RETURNING id`,
+		user.ID, req.Body).Scan(&postID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Create activity for new post
+	activityMessage := fmt.Sprintf("%sさんが新しい投稿をしました", user.DisplayName)
+	createActivity(user.ID, "post_created", activityMessage)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"id":      postID,
+		"message": "Post created successfully",
+	})
 }
 
 func adminDeleteUser(w http.ResponseWriter, r *http.Request) {

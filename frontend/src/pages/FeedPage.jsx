@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Heart, User } from 'lucide-react'
+import CreatePostForm from '../components/CreatePostForm'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
@@ -90,6 +91,8 @@ function FeedPage() {
     <div className="min-h-screen bg-background">
       <div className="max-w-2xl mx-auto p-4">
         <h1 className="text-2xl font-bold mb-6">フィード</h1>
+        
+        <CreatePostForm onPostCreated={fetchFeed} />
         
         <div className="space-y-4">
           {posts.map(post => (

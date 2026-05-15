@@ -184,9 +184,9 @@ function WelcomePage() {
           )}
 
           {/* ウェルカムメッセージ */}
-          <h1 className="text-2xl font-bold text-center text-foreground">
+          {/* <h1 className="text-2xl font-bold text-center text-foreground">
             ようこそ、{user?.display_name}さん
-          </h1>
+          </h1> */}
 
           {/* クイックアクセスメニュー */}
           <div className="grid grid-cols-3 gap-4">
@@ -225,7 +225,7 @@ function WelcomePage() {
           </div>
 
           {/* 一言メッセージ */}
-          {profile?.bio && (
+          {/* {profile?.bio && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-primary">一言メッセージ</CardTitle>
@@ -234,7 +234,7 @@ function WelcomePage() {
                 <p className="text-lg italic text-foreground">{profile.bio}</p>
               </CardContent>
             </Card>
-          )}
+          )} */}
 
           {/* お知らせ */}
           {(activities?.length || 0) > 0 && (
