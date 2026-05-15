@@ -27,10 +27,13 @@ function FeedPage() {
       })
       if (res.ok) {
         const data = await res.json()
-        setPosts(data)
+        setPosts(data || [])
+      } else {
+        setPosts([])
       }
     } catch (err) {
       console.error('Failed to fetch feed:', err)
+      setPosts([])
     } finally {
       setLoading(false)
     }
@@ -136,10 +139,10 @@ function FeedPage() {
           ))}
         </div>
 
-        {posts.length === 0 && (
+        {(!posts || posts.length === 0) && (
           <Card>
             <CardContent className="pt-6 text-center text-muted-foreground">
-              投稿がありません。社員をフォローしてフィードを充実させましょう！
+              フォローしているユーザーがいません。社員をフォローしてフィードを充実させましょう！
             </CardContent>
           </Card>
         )}
