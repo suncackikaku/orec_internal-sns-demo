@@ -68,6 +68,7 @@ export function AuthProvider({ children }) {
       console.log('WOFF Profile:', profile)
 
       // Send profile to backend for authentication
+      // Note: WOFF SDK may return photoUrl in the profile
       const res = await fetch(`${API_URL}/auth/woff`, {
         method: 'POST',
         headers: {
@@ -76,7 +77,8 @@ export function AuthProvider({ children }) {
         body: JSON.stringify({
           userId: profile.userId,
           displayName: profile.displayName,
-          domainId: profile.domainId
+          domainId: profile.domainId,
+          photoUrl: profile.photoUrl || null
         })
       })
 

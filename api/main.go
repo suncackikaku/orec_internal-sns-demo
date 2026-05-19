@@ -224,7 +224,7 @@ func (d *DBAuth) GetUserByWoffID(woffID string) (*auth.User, error) {
 	return &user, nil
 }
 
-func (d *DBAuth) CreateWoffUser(woffID, displayName, domainID string) (*auth.User, error) {
+func (d *DBAuth) CreateWoffUser(woffID, displayName, domainID, photoUrl string) (*auth.User, error) {
 	var userID string
 	err := d.db.QueryRow(`
 		INSERT INTO users (id, display_name, email, auth_provider, woff_id, domain_id, primary_department_id)
@@ -235,10 +235,10 @@ func (d *DBAuth) CreateWoffUser(woffID, displayName, domainID string) (*auth.Use
 		return nil, err
 	}
 
-	// Create empty profile
+	// Create profile with photo URL if available
 	_, err = d.db.Exec(`
-		INSERT INTO user_profiles (user_id)
-		VALUES ($1)`, userID)
+		INSERT INTO user_profiles (user_id, profile_image_url)
+		VALUES ($1, $2)`, userID, photoUrl)
 	if err != nil {
 		return nil, err
 	}
@@ -1545,6 +1545,7 @@ func woffAuthHandler(w http.ResponseWriter, r *http.Request) {
 		UserID      string `json:"userId"`
 		DisplayName string `json:"displayName"`
 		DomainID    string `json:"domainId"`
+		PhotoUrl    string `json:"photoUrl"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -1557,8 +1558,23 @@ func woffAuthHandler(w http.ResponseWriter, r *http.Request) {
 	user, err := dbAuth.GetUserByWoffID(req.UserID)
 	if err != nil {
 		if err == auth.ErrUserNotFound {
-			// Create new user
-			user, err = dbAuth.CreateWoffUser(req.UserID, req.DisplayName, req.DomainID)
+			// Create new user with photo URL from WOFF SDK or fallback to LINE WORKS API
+			photoUrl := req.PhotoUrl
+			if photoUrl == "" {
+				// Fallback: try to get photo URL from LINE WORKS API
+				woffAuth := auth.NewWoffAuthenticator(
+					os.Getenv("WOFF_CLIENT_ID"),
+					os.Getenv("WOFF_CLIENT_SECRET"),
+					os.Getenv("JWT_SECRET"),
+					dbAuth,
+				)
+				userInfo, apiErr := woffAuth.VerifyWoffUser(req.UserID, req.DomainID)
+				if apiErr == nil && userInfo.PhotoUrl != "" {
+					photoUrl = userInfo.PhotoUrl
+				}
+			}
+
+			user, err = dbAuth.CreateWoffUser(req.UserID, req.DisplayName, req.DomainID, photoUrl)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return

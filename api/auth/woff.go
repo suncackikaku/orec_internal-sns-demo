@@ -22,6 +22,7 @@ type WoffAuthRequest struct {
 	UserID      string `json:"userId"`
 	DisplayName string `json:"displayName"`
 	DomainID    string `json:"domainId"`
+	PhotoUrl    string `json:"photoUrl"`
 }
 
 // WoffTokenResponse represents LINE WORKS token response
@@ -37,6 +38,7 @@ type WoffUserInfo struct {
 	DisplayName string `json:"displayName"`
 	Email       string `json:"email"`
 	DomainID    string `json:"domainId"`
+	PhotoUrl    string `json:"photoUrl"`
 }
 
 // WoffAuthenticator handles WOFF authentication
