@@ -55,6 +55,13 @@ function DepartmentPage() {
         </div>
       </div>
 
+      {/* 部署紹介 */}
+      {department.description && (
+        <div style={styles.descriptionBox}>
+          <p style={styles.descriptionText}>{department.description}</p>
+        </div>
+      )}
+
       <div style={styles.tabContainer}>
         <button 
           style={{
@@ -171,6 +178,17 @@ const styles = {
   catchcopy: {
     fontSize: '14px',
     opacity: 0.9,
+  },
+  descriptionBox: {
+    padding: '20px',
+    backgroundColor: '#f8f9fa',
+    borderBottom: '1px solid #e0e0e0',
+  },
+  descriptionText: {
+    fontSize: '14px',
+    lineHeight: '1.8',
+    color: '#444',
+    margin: 0,
   },
   tabContainer: {
     display: 'flex',

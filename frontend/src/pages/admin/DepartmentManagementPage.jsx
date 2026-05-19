@@ -3,6 +3,7 @@ import { useAdminAuth } from '../../contexts/AdminAuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
 import {
   Dialog,
@@ -242,11 +243,12 @@ function DepartmentManagementPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="description">説明</Label>
-              <Input
+              <Textarea
                 id="description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="部署の説明"
+                rows={4}
               />
             </div>
             <div className="space-y-2">
