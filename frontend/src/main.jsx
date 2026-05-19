@@ -12,6 +12,7 @@ import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import ProfileEditPage from './pages/ProfileEditPage'
 import FeedPage from './pages/FeedPage'
+import DepartmentSelectPage from './pages/DepartmentSelectPage'
 import AdminLoginPage from './pages/admin/AdminLoginPage'
 import AdminLayout from './pages/admin/AdminLayout'
 import AdminDashboardPage from './pages/admin/AdminDashboardPage'
@@ -19,12 +20,19 @@ import UserManagementPage from './pages/admin/UserManagementPage'
 import DepartmentManagementPage from './pages/admin/DepartmentManagementPage'
 import './index.css'
 
-function PrivateRoute({ children }) {
+function PrivateRoute({ children, allowNoDepartment = false }) {
   const { user, loading } = useAuth()
   
   if (loading) return <div>読み込み中...</div>
   
-  return user ? children : <Navigate to="/login" />
+  if (!user) return <Navigate to="/login" />
+  
+  // Redirect to department selection if not set and not explicitly allowed
+  if (!allowNoDepartment && !user?.primary_department_id) {
+    return <Navigate to="/select-department" />
+  }
+  
+  return children
 }
 
 function AdminRoute({ children }) {
@@ -80,6 +88,11 @@ function App() {
             <Route path="/feed" element={
               <PrivateRoute>
                 <FeedPage />
+              </PrivateRoute>
+            } />
+            <Route path="/select-department" element={
+              <PrivateRoute allowNoDepartment={true}>
+                <DepartmentSelectPage />
               </PrivateRoute>
             } />
             

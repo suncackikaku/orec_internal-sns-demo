@@ -24,7 +24,11 @@ function LoginPage() {
 
     const result = await loginWithWoff()
     if (result.success) {
-      navigate('/')
+      if (result.needsDepartment) {
+        navigate('/select-department')
+      } else {
+        navigate('/')
+      }
     } else {
       setError(result.error || 'LINE WORKSでのログインに失敗しました')
     }

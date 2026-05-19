@@ -293,6 +293,7 @@ func main() {
 		r.Use(authMiddleware)
 		r.Get("/api/auth/me", getMeHandler)
 		r.Put("/api/users/me/profile", updateProfileHandler)
+		r.Put("/api/users/me/department", updateUserDepartmentHandler)
 		r.Get("/api/search", searchHandler)
 		r.Get("/api/users", getUsersList)
 		r.Get("/api/activities", getActivitiesHandler)
@@ -1047,12 +1048,6 @@ func getFeedHandler(w http.ResponseWriter, r *http.Request) {
 			GROUP BY post_id
 		) l ON p.id = l.post_id
 		LEFT JOIN likes ul ON p.id = ul.post_id AND ul.user_id = $1
-		WHERE p.author_id = $1 
-			OR p.author_id IN (
-				SELECT following_id 
-				FROM followers 
-				WHERE follower_id = $1
-			)
 		ORDER BY p.created_at DESC
 		LIMIT $2 OFFSET $3`,
 		user.ID, perPage, offset)
@@ -1342,6 +1337,30 @@ func adminUpdateUserDepartment(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"message": "User department updated successfully"})
+}
+
+func updateUserDepartmentHandler(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value("user").(*auth.User)
+
+	var req struct {
+		DepartmentID string `json:"department_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	_, err := db.Exec(`
+		UPDATE users
+		SET primary_department_id = $1
+		WHERE id = $2`, req.DepartmentID, user.ID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"message": "Department updated successfully"})
 }
 
 func createPostHandler(w http.ResponseWriter, r *http.Request) {

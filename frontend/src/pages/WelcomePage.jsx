@@ -247,7 +247,7 @@ function WelcomePage() {
               </CardHeader>
               <CardContent>
                 <ItemGroup ref={activitiesRef} className="gap-3">
-                  {activities.map(activity => (
+                  {activities.slice(0, 3).map(activity => (
                     <Item key={activity.id} variant="outline" className="cursor-pointer hover:bg-muted/80">
                       <Avatar className="h-8 w-8 flex-shrink-0">
                         <AvatarFallback className="text-xs bg-primary/10 text-primary font-bold">

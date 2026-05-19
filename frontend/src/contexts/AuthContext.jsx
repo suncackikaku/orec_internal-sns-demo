@@ -88,7 +88,9 @@ export function AuthProvider({ children }) {
       const data = await res.json()
       localStorage.setItem('token', data.token)
       setUser(data.user)
-      return { success: true }
+      // Check if department selection is needed
+      const needsDepartment = !data.user?.primary_department_id
+      return { success: true, needsDepartment }
     } catch (err) {
       console.error('WOFF login failed:', err)
       return { success: false, error: err.message }
@@ -108,6 +110,7 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider value={{ 
       user, 
+      setUser,
       loginWithWoff, 
       logout, 
       getAuthHeaders, 

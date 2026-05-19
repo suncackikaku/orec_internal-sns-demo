@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
+import { Card, CardContent } from '@/components/ui/card'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { User } from 'lucide-react'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
 function DepartmentPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { getAuthHeaders } = useAuth()
   const [activeTab, setActiveTab] = useState('members')
   const [department, setDepartment] = useState(null)
   const [members, setMembers] = useState([])
@@ -97,17 +102,28 @@ function DepartmentPage() {
           )
         ) : (
           (posts || []).length > 0 ? (
-            <div style={styles.feed}>
+            <div className="space-y-4">
               {(posts || []).map(post => (
-                <div key={post.id} style={styles.postCard}>
-                  <div style={styles.postHeader}>
-                    <strong>{post.author_name}</strong>
-                    <span style={styles.postDate}>
-                      {new Date(post.created_at).toLocaleDateString('ja-JP')}
-                    </span>
-                  </div>
-                  <p style={styles.postBody}>{post.body}</p>
-                </div>
+                <Card key={post.id}>
+                  <CardContent className="pt-6">
+                    <div className="flex items-start gap-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarFallback>
+                          <User className="h-5 w-5" />
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-medium">{post.author_name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(post.created_at).toLocaleDateString('ja-JP')}
+                          </span>
+                        </div>
+                        <p className="text-sm text-foreground">{post.body}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           ) : (
