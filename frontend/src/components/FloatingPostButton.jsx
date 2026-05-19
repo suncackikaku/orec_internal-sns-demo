@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import {
@@ -9,7 +9,8 @@ import {
 } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Plus, Send, User } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Plus, Send, User, X } from 'lucide-react'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
@@ -17,8 +18,28 @@ function FloatingPostButton() {
   const { user, getAuthHeaders } = useAuth()
   const [open, setOpen] = useState(false)
   const [body, setBody] = useState('')
+  const [tags, setTags] = useState([])
+  const [departments, setDepartments] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (open) {
+      fetchDepartments()
+    }
+  }, [open])
+
+  const fetchDepartments = async () => {
+    try {
+      const res = await fetch(`${API_URL}/departments`)
+      if (res.ok) {
+        const data = await res.json()
+        setDepartments(data || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch departments:', err)
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -34,7 +55,10 @@ function FloatingPostButton() {
           ...getAuthHeaders(),
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ body: body.trim() })
+        body: JSON.stringify({ 
+          body: body.trim(),
+          tags: tags
+        })
       })
 
       if (!res.ok) {
@@ -42,6 +66,7 @@ function FloatingPostButton() {
       }
 
       setBody('')
+      setTags([])
       setOpen(false)
       // Refresh the page to show new post
       window.location.reload()
@@ -50,6 +75,15 @@ function FloatingPostButton() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const toggleTag = (deptName) => {
+    setTags(prev => {
+      if (prev.includes(deptName)) {
+        return prev.filter(t => t !== deptName)
+      }
+      return [...prev, deptName]
+    })
   }
 
   if (!user) return null
@@ -93,6 +127,28 @@ function FloatingPostButton() {
                 {error && (
                   <p className="text-sm text-red-500 mt-2">{error}</p>
                 )}
+              </div>
+            </div>
+
+            {/* タグ選択 */}
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">関連する部署をタグ付け（複数選択可）</p>
+              <div className="flex flex-wrap gap-2">
+                {departments.map(dept => (
+                  <button
+                    key={dept.id}
+                    type="button"
+                    onClick={() => toggleTag(dept.name)}
+                    className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm transition-colors ${
+                      tags.includes(dept.name)
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                    }`}
+                  >
+                    {dept.name}
+                    {tags.includes(dept.name) && <X className="h-3 w-3" />}
+                  </button>
+                ))}
               </div>
             </div>
             

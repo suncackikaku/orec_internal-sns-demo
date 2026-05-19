@@ -19,6 +19,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 	_ "github.com/lib/pq"
 )
 
@@ -126,6 +127,7 @@ type Post struct {
 	AuthorID   string    `json:"author_id" db:"author_id"`
 	AuthorName string    `json:"author_name" db:"author_name"`
 	Body       string    `json:"body" db:"body"`
+	Tags       []string  `json:"tags" db:"tags"`
 	CreatedAt  time.Time `json:"created_at" db:"created_at"`
 }
 
@@ -570,7 +572,7 @@ func getDepartment(w http.ResponseWriter, r *http.Request) {
 
 	var posts []Post
 	err = db.Select(&posts, `
-		SELECT p.id, p.author_id, u.display_name as author_name, p.body, p.created_at 
+		SELECT p.id, p.author_id, u.display_name as author_name, p.body, p.tags, p.created_at 
 		FROM posts p 
 		JOIN users u ON p.author_id = u.id 
 		WHERE u.primary_department_id = $1 
@@ -1037,7 +1039,7 @@ func getFeedHandler(w http.ResponseWriter, r *http.Request) {
 
 	query := `
 		SELECT 
-			p.id, p.author_id, u.display_name as author_name, p.body, p.created_at,
+			p.id, p.author_id, u.display_name as author_name, p.body, p.tags, p.created_at,
 			COALESCE(up.profile_image_url, '') as author_image_url,
 			COALESCE(l.count, 0) as like_count,
 			CASE WHEN ul.user_id IS NOT NULL THEN true ELSE false END as is_liked
@@ -1063,6 +1065,16 @@ func getFeedHandler(w http.ResponseWriter, r *http.Request) {
 					WHERE id = $1
 				)
 				AND id != $1
+			)
+			OR EXISTS (
+				SELECT 1 
+				FROM unnest(p.tags) as tag
+				WHERE tag = (
+					SELECT d.name 
+					FROM users u2 
+					JOIN departments d ON u2.primary_department_id = d.id 
+					WHERE u2.id = $1
+				)
 			)`
 	}
 
@@ -1387,7 +1399,8 @@ func createPostHandler(w http.ResponseWriter, r *http.Request) {
 	user := r.Context().Value("user").(*auth.User)
 
 	var req struct {
-		Body string `json:"body"`
+		Body string   `json:"body"`
+		Tags []string `json:"tags"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -1400,11 +1413,20 @@ func createPostHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var postID string
-	err := db.QueryRow(`
-		INSERT INTO posts (author_id, body)
-		VALUES ($1, $2)
-		RETURNING id`,
-		user.ID, req.Body).Scan(&postID)
+	var err error
+	if len(req.Tags) > 0 {
+		err = db.QueryRow(`
+			INSERT INTO posts (author_id, body, tags)
+			VALUES ($1, $2, $3)
+			RETURNING id`,
+			user.ID, req.Body, pq.Array(req.Tags)).Scan(&postID)
+	} else {
+		err = db.QueryRow(`
+			INSERT INTO posts (author_id, body)
+			VALUES ($1, $2)
+			RETURNING id`,
+			user.ID, req.Body).Scan(&postID)
+	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

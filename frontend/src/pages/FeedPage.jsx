@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
 import { Heart, User } from 'lucide-react'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
@@ -152,6 +153,17 @@ function FeedPage() {
                     </div>
                     
                     <p className="text-sm text-foreground mb-3">{post.body}</p>
+                    
+                    {/* タグ表示 */}
+                    {post.tags && post.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-3">
+                        {post.tags.map((tag, index) => (
+                          <Badge key={index} variant="secondary" className="text-xs">
+                            #{tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                     
                     <div className="flex items-center gap-4">
                       <Button

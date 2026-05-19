@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
 import { User } from 'lucide-react'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
@@ -126,7 +127,16 @@ function DepartmentPage() {
                             {new Date(post.created_at).toLocaleDateString('ja-JP')}
                           </span>
                         </div>
-                        <p className="text-sm text-foreground">{post.body}</p>
+                        <p className="text-sm text-foreground mb-2">{post.body}</p>
+                        {post.tags && post.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {post.tags.map((tag, index) => (
+                              <Badge key={index} variant="secondary" className="text-xs">
+                                #{tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </CardContent>
