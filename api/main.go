@@ -123,12 +123,12 @@ type UserProfile struct {
 }
 
 type Post struct {
-	ID         string    `json:"id" db:"id"`
-	AuthorID   string    `json:"author_id" db:"author_id"`
-	AuthorName string    `json:"author_name" db:"author_name"`
-	Body       string    `json:"body" db:"body"`
-	Tags       []string  `json:"tags" db:"tags"`
-	CreatedAt  time.Time `json:"created_at" db:"created_at"`
+	ID         string         `json:"id" db:"id"`
+	AuthorID   string         `json:"author_id" db:"author_id"`
+	AuthorName string         `json:"author_name" db:"author_name"`
+	Body       string         `json:"body" db:"body"`
+	Tags       pq.StringArray `json:"tags" db:"tags"`
+	CreatedAt  time.Time      `json:"created_at" db:"created_at"`
 }
 
 type DepartmentResponse struct {

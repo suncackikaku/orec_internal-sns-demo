@@ -229,6 +229,10 @@ cd /opt/sns-app  # プロジェクトディレクトリ
 
 
 方法2: 手動更新
+```
+ssh root@160.251.182.217 
+```
+
 cd /opt/sns-app
 # 1. 最新コード取得
 git pull origin main
