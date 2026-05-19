@@ -13,6 +13,7 @@ import RegisterPage from './pages/RegisterPage'
 import ProfileEditPage from './pages/ProfileEditPage'
 import FeedPage from './pages/FeedPage'
 import DepartmentSelectPage from './pages/DepartmentSelectPage'
+import FloatingPostButton from './components/FloatingPostButton'
 import AdminLoginPage from './pages/admin/AdminLoginPage'
 import AdminLayout from './pages/admin/AdminLayout'
 import AdminDashboardPage from './pages/admin/AdminDashboardPage'
@@ -48,6 +49,7 @@ function App() {
     <AuthProvider>
       <AdminAuthProvider>
         <BrowserRouter>
+          <FloatingPostButton />
           <Routes>
             {/* Public routes */}
             <Route path="/login" element={<LoginPage />} />

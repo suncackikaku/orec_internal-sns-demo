@@ -1026,6 +1026,8 @@ func getFeedHandler(w http.ResponseWriter, r *http.Request) {
 
 	offset := (page - 1) * perPage
 
+	filter := r.URL.Query().Get("filter")
+
 	var posts []struct {
 		Post
 		AuthorImageURL string `json:"author_image_url" db:"author_image_url"`
@@ -1033,7 +1035,7 @@ func getFeedHandler(w http.ResponseWriter, r *http.Request) {
 		IsLiked        bool   `json:"is_liked" db:"is_liked"`
 	}
 
-	err := db.Select(&posts, `
+	query := `
 		SELECT 
 			p.id, p.author_id, u.display_name as author_name, p.body, p.created_at,
 			COALESCE(up.profile_image_url, '') as author_image_url,
@@ -1047,10 +1049,28 @@ func getFeedHandler(w http.ResponseWriter, r *http.Request) {
 			FROM likes 
 			GROUP BY post_id
 		) l ON p.id = l.post_id
-		LEFT JOIN likes ul ON p.id = ul.post_id AND ul.user_id = $1
+		LEFT JOIN likes ul ON p.id = ul.post_id AND ul.user_id = $1`
+
+	if filter == "related" {
+		query += `
+		WHERE p.author_id = $1 
+			OR p.author_id IN (
+				SELECT id 
+				FROM users 
+				WHERE primary_department_id = (
+					SELECT primary_department_id 
+					FROM users 
+					WHERE id = $1
+				)
+				AND id != $1
+			)`
+	}
+
+	query += `
 		ORDER BY p.created_at DESC
-		LIMIT $2 OFFSET $3`,
-		user.ID, perPage, offset)
+		LIMIT $2 OFFSET $3`
+
+	err := db.Select(&posts, query, user.ID, perPage, offset)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

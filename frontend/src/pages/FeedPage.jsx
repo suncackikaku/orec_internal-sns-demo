@@ -2,10 +2,9 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Heart, User } from 'lucide-react'
-import CreatePostForm from '../components/CreatePostForm'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
@@ -15,15 +14,17 @@ function FeedPage() {
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
+  const [activeTab, setActiveTab] = useState('all') // 'all' or 'related'
 
   useEffect(() => {
     fetchFeed()
-  }, [page])
+  }, [page, activeTab])
 
   const fetchFeed = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`${API_URL}/feed?page=${page}&per_page=20`, {
+      const filterParam = activeTab === 'related' ? '&filter=related' : ''
+      const res = await fetch(`${API_URL}/feed?page=${page}&per_page=20${filterParam}`, {
         headers: getAuthHeaders()
       })
       if (res.ok) {
@@ -90,9 +91,37 @@ function FeedPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-2xl mx-auto p-4">
-        <h1 className="text-2xl font-bold mb-6">フィード</h1>
+        <h1 className="text-2xl font-bold mb-4">フィード</h1>
         
-        <CreatePostForm onPostCreated={fetchFeed} />
+        {/* タブ */}
+        <div className="flex mb-6 border-b border-border">
+          <button
+            onClick={() => setActiveTab('all')}
+            className={`flex-1 pb-3 text-sm font-medium transition-colors relative ${
+              activeTab === 'all' 
+                ? 'text-primary' 
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            全フィード
+            {activeTab === 'all' && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('related')}
+            className={`flex-1 pb-3 text-sm font-medium transition-colors relative ${
+              activeTab === 'related' 
+                ? 'text-primary' 
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            自分に関連
+            {activeTab === 'related' && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+            )}
+          </button>
+        </div>
         
         <div className="space-y-4">
           {posts.map(post => (
@@ -145,7 +174,9 @@ function FeedPage() {
         {(!posts || posts.length === 0) && (
           <Card>
             <CardContent className="pt-6 text-center text-muted-foreground">
-              フォローしているユーザーがいません。社員をフォローしてフィードを充実させましょう！
+              {activeTab === 'all' 
+                ? '投稿がありません。' 
+                : '自分に関連する投稿がありません。'}
             </CardContent>
           </Card>
         )}

@@ -197,7 +197,7 @@ function WelcomePage() {
               <CardHeader className="text-center">
                 <Heart className="h-10 w-10 mx-auto text-primary mb-2" />
                 <CardTitle>フィード</CardTitle>
-                <CardDescription>フォロー中の投稿</CardDescription>
+                <CardDescription>全社の投稿</CardDescription>
               </CardHeader>
             </Card>
 
