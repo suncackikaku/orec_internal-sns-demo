@@ -133,7 +133,8 @@ function WelcomePage() {
           <Button 
             variant="ghost" 
             size="icon"
-            onClick={() => navigate(`/users/${user?.id}/profile`)}
+            onClick={() => user?.id && navigate(`/users/${user.id}/profile`)}
+            disabled={!user?.id}
             className="text-primary-foreground hover:bg-primary/90"
           >
             <Settings className="h-6 w-6" />

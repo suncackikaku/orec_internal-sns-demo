@@ -27,7 +27,10 @@ function UserProfilePage() {
       headers: getAuthHeaders()
     })
       .then(res => {
-        if (!res.ok) throw new Error('Failed to fetch')
+        if (!res.ok) {
+          if (res.status === 404) throw new Error('ユーザーが見つかりません')
+          throw new Error(`プロフィールの取得に失敗しました (${res.status})`)
+        }
         return res.json()
       })
       .then(data => {
