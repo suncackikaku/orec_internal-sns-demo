@@ -1422,13 +1422,13 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	// Parse multipart form with 10MB max memory
 	err := r.ParseMultipartForm(10 << 20)
 	if err != nil {
-		http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("Failed to parse form: %v", err), http.StatusBadRequest)
 		return
 	}
 
 	file, handler, err := r.FormFile("file")
 	if err != nil {
-		http.Error(w, "Failed to get file", http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("Failed to get file: %v", err), http.StatusBadRequest)
 		return
 	}
 	defer file.Close()
@@ -1440,22 +1440,31 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Ensure uploads directory exists
+	uploadsDir := "./uploads"
+	if _, err := os.Stat(uploadsDir); os.IsNotExist(err) {
+		if err := os.MkdirAll(uploadsDir, 0755); err != nil {
+			http.Error(w, fmt.Sprintf("Failed to create uploads directory: %v", err), http.StatusInternalServerError)
+			return
+		}
+	}
+
 	// Generate unique filename
 	ext := filepath.Ext(handler.Filename)
 	filename := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
-	uploadPath := filepath.Join("./uploads", filename)
+	uploadPath := filepath.Join(uploadsDir, filename)
 
 	// Save file
 	out, err := os.Create(uploadPath)
 	if err != nil {
-		http.Error(w, "Failed to save file", http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("Failed to save file: %v", err), http.StatusInternalServerError)
 		return
 	}
 	defer out.Close()
 
 	_, err = io.Copy(out, file)
 	if err != nil {
-		http.Error(w, "Failed to save file", http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("Failed to write file: %v", err), http.StatusInternalServerError)
 		return
 	}
 

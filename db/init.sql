@@ -38,6 +38,7 @@ CREATE TABLE posts (
     author_id UUID REFERENCES users(id),
     body TEXT NOT NULL,
     image_urls TEXT[],
+    tags TEXT[] DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 

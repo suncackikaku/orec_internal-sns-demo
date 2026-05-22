@@ -31,6 +31,8 @@ services:
       PORT: 8080
     ports:
       - "8080:8080"
+    volumes:
+      - uploads_data:/root/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -51,3 +53,4 @@ services:
 
 volumes:
   db_data:
+  uploads_data:

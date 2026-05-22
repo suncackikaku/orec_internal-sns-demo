@@ -108,10 +108,13 @@ function FloatingPostButton() {
           const data = await res.json()
           newImageURLs.push(data.url)
         } else {
-          setError('画像のアップロードに失敗しました')
+          const errorText = await res.text()
+          console.error('Upload error:', res.status, errorText)
+          setError(`画像のアップロードに失敗しました: ${errorText}`)
         }
       } catch (err) {
-        setError('画像のアップロードに失敗しました')
+        console.error('Upload exception:', err)
+        setError(`画像のアップロードに失敗しました: ${err.message}`)
       }
     }
 
