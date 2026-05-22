@@ -22,9 +22,14 @@ function DepartmentPage() {
   const deptId = id || '11111111-1111-1111-1111-111111111111'
 
   useEffect(() => {
-    fetch(`${API_URL}/departments/${deptId}`)
+    fetch(`${API_URL}/departments/${deptId}`, {
+      headers: getAuthHeaders()
+    })
       .then(res => {
-        if (!res.ok) throw new Error('Failed to fetch')
+        if (!res.ok) {
+          if (res.status === 404) throw new Error('部署が見つかりません')
+          throw new Error(`部署情報の取得に失敗しました (${res.status})`)
+        }
         return res.json()
       })
       .then(data => {
