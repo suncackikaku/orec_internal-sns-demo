@@ -5,9 +5,11 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -128,6 +130,7 @@ type Post struct {
 	AuthorName string         `json:"author_name" db:"author_name"`
 	Body       string         `json:"body" db:"body"`
 	Tags       pq.StringArray `json:"tags" db:"tags"`
+	ImageURLs  pq.StringArray `json:"image_urls" db:"image_urls"`
 	CreatedAt  time.Time      `json:"created_at" db:"created_at"`
 }
 
@@ -186,11 +189,12 @@ type SearchDepartment struct {
 }
 
 type SearchPost struct {
-	ID          string    `json:"id" db:"id"`
-	AuthorName  string    `json:"author_name" db:"author_name"`
-	Body        string    `json:"body" db:"body"`
-	CreatedAt   time.Time `json:"created_at" db:"created_at"`
-	MatchedText string    `json:"matched_text" db:"matched_text"`
+	ID          string         `json:"id" db:"id"`
+	AuthorName  string         `json:"author_name" db:"author_name"`
+	Body        string         `json:"body" db:"body"`
+	ImageURLs   pq.StringArray `json:"image_urls" db:"image_urls"`
+	CreatedAt   time.Time      `json:"created_at" db:"created_at"`
+	MatchedText string         `json:"matched_text" db:"matched_text"`
 }
 
 type Activity struct {
@@ -282,6 +286,12 @@ func main() {
 		AllowedHeaders: []string{"*"},
 	}))
 
+	// Create uploads directory if it doesn't exist
+	uploadsDir := "./uploads"
+	if _, err := os.Stat(uploadsDir); os.IsNotExist(err) {
+		os.MkdirAll(uploadsDir, 0755)
+	}
+
 	// Public routes
 	r.Post("/api/auth/register", registerHandler)
 	r.Post("/api/auth/login", loginHandler)
@@ -289,6 +299,10 @@ func main() {
 	r.Get("/api/departments", getDepartmentsList)
 	r.Get("/api/departments/{deptId}", getDepartment)
 	r.Get("/api/users/{userId}/profile", getUserProfile)
+
+	// Static file serving for uploads
+	uploadFS := http.FileServer(http.Dir(uploadsDir))
+	r.Handle("/uploads/*", http.StripPrefix("/uploads/", uploadFS))
 
 	// Protected routes
 	r.Group(func(r chi.Router) {
@@ -310,6 +324,7 @@ func main() {
 
 		// 投稿機能
 		r.Post("/api/posts", createPostHandler)
+		r.Post("/api/upload", uploadHandler)
 
 		// いいね機能
 		r.Post("/api/posts/{postId}/like", likeHandler)
@@ -572,7 +587,7 @@ func getDepartment(w http.ResponseWriter, r *http.Request) {
 
 	var posts []Post
 	err = db.Select(&posts, `
-		SELECT p.id, p.author_id, u.display_name as author_name, p.body, p.tags, p.created_at 
+		SELECT p.id, p.author_id, u.display_name as author_name, p.body, p.tags, p.image_urls, p.created_at 
 		FROM posts p 
 		JOIN users u ON p.author_id = u.id 
 		WHERE u.primary_department_id = $1 
@@ -677,7 +692,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	// 投稿検索
 	var posts []SearchPost
 	err = db.Select(&posts, `
-		SELECT p.id, u.display_name as author_name, p.body, p.created_at,
+		SELECT p.id, u.display_name as author_name, p.body, p.image_urls, p.created_at,
 			p.body as matched_text
 		FROM posts p
 		JOIN users u ON p.author_id = u.id
@@ -1039,7 +1054,7 @@ func getFeedHandler(w http.ResponseWriter, r *http.Request) {
 
 	query := `
 		SELECT 
-			p.id, p.author_id, u.display_name as author_name, p.body, p.tags, p.created_at,
+			p.id, p.author_id, u.display_name as author_name, p.body, p.tags, p.image_urls, p.created_at,
 			COALESCE(up.profile_image_url, '') as author_image_url,
 			COALESCE(l.count, 0) as like_count,
 			CASE WHEN ul.user_id IS NOT NULL THEN true ELSE false END as is_liked
@@ -1395,12 +1410,62 @@ func updateUserDepartmentHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"message": "Department updated successfully"})
 }
 
+func uploadHandler(w http.ResponseWriter, r *http.Request) {
+	// Parse multipart form with 10MB max memory
+	err := r.ParseMultipartForm(10 << 20)
+	if err != nil {
+		http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	file, handler, err := r.FormFile("file")
+	if err != nil {
+		http.Error(w, "Failed to get file", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	// Validate file type
+	contentType := handler.Header.Get("Content-Type")
+	if !strings.HasPrefix(contentType, "image/") {
+		http.Error(w, "Only image files are allowed", http.StatusBadRequest)
+		return
+	}
+
+	// Generate unique filename
+	ext := filepath.Ext(handler.Filename)
+	filename := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
+	uploadPath := filepath.Join("./uploads", filename)
+
+	// Save file
+	out, err := os.Create(uploadPath)
+	if err != nil {
+		http.Error(w, "Failed to save file", http.StatusInternalServerError)
+		return
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, file)
+	if err != nil {
+		http.Error(w, "Failed to save file", http.StatusInternalServerError)
+		return
+	}
+
+	// Return the URL
+	uploadURL := fmt.Sprintf("/uploads/%s", filename)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"url": uploadURL,
+	})
+}
+
 func createPostHandler(w http.ResponseWriter, r *http.Request) {
 	user := r.Context().Value("user").(*auth.User)
 
 	var req struct {
-		Body string   `json:"body"`
-		Tags []string `json:"tags"`
+		Body      string   `json:"body"`
+		Tags      []string `json:"tags"`
+		ImageURLs []string `json:"image_urls"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -1412,14 +1477,31 @@ func createPostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len([]rune(req.Body)) > 4000 {
+		http.Error(w, "Body must be 4000 characters or less", http.StatusBadRequest)
+		return
+	}
+
 	var postID string
 	var err error
-	if len(req.Tags) > 0 {
+	if len(req.Tags) > 0 && len(req.ImageURLs) > 0 {
+		err = db.QueryRow(`
+			INSERT INTO posts (author_id, body, tags, image_urls)
+			VALUES ($1, $2, $3, $4)
+			RETURNING id`,
+			user.ID, req.Body, pq.Array(req.Tags), pq.Array(req.ImageURLs)).Scan(&postID)
+	} else if len(req.Tags) > 0 {
 		err = db.QueryRow(`
 			INSERT INTO posts (author_id, body, tags)
 			VALUES ($1, $2, $3)
 			RETURNING id`,
 			user.ID, req.Body, pq.Array(req.Tags)).Scan(&postID)
+	} else if len(req.ImageURLs) > 0 {
+		err = db.QueryRow(`
+			INSERT INTO posts (author_id, body, image_urls)
+			VALUES ($1, $2, $3)
+			RETURNING id`,
+			user.ID, req.Body, pq.Array(req.ImageURLs)).Scan(&postID)
 	} else {
 		err = db.QueryRow(`
 			INSERT INTO posts (author_id, body)

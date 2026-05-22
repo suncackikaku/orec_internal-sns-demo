@@ -154,6 +154,24 @@ function FeedPage() {
                     
                     <p className="text-sm text-foreground mb-3">{post.body}</p>
                     
+                    {/* 画像表示 */}
+                    {post.image_urls && post.image_urls.length > 0 && (
+                      <div className={`grid gap-2 mb-3 ${
+                        post.image_urls.length === 1 ? 'grid-cols-1' : 
+                        post.image_urls.length === 2 ? 'grid-cols-2' : 
+                        'grid-cols-2'
+                      }`}>
+                        {post.image_urls.map((url, index) => (
+                          <img
+                            key={index}
+                            src={url}
+                            alt={`画像 ${index + 1}`}
+                            className="w-full h-48 object-cover rounded-lg"
+                          />
+                        ))}
+                      </div>
+                    )}
+                    
                     {/* タグ表示 */}
                     {post.tags && post.tags.length > 0 && (
                       <div className="flex flex-wrap gap-1 mb-3">

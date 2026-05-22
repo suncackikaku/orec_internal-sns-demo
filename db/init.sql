@@ -37,6 +37,7 @@ CREATE TABLE posts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     author_id UUID REFERENCES users(id),
     body TEXT NOT NULL,
+    image_urls TEXT[],
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 

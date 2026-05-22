@@ -128,6 +128,23 @@ function DepartmentPage() {
                           </span>
                         </div>
                         <p className="text-sm text-foreground mb-2">{post.body}</p>
+                        
+                        {/* 画像表示 */}
+                        {post.image_urls && post.image_urls.length > 0 && (
+                          <div className={`grid gap-2 mb-2 ${
+                            post.image_urls.length === 1 ? 'grid-cols-1' : 'grid-cols-2'
+                          }`}>
+                            {post.image_urls.map((url, index) => (
+                              <img
+                                key={index}
+                                src={url}
+                                alt={`画像 ${index + 1}`}
+                                className="w-full h-48 object-cover rounded-lg"
+                              />
+                            ))}
+                          </div>
+                        )}
+                        
                         {post.tags && post.tags.length > 0 && (
                           <div className="flex flex-wrap gap-1">
                             {post.tags.map((tag, index) => (
