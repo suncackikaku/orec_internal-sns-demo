@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Plus, Send, User, X, Image as ImageIcon } from 'lucide-react'
+import { compressImage } from '../utils/imageUtils'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
@@ -94,10 +95,13 @@ function FloatingPostButton() {
         break
       }
 
-      const formData = new FormData()
-      formData.append('file', file)
-
       try {
+        // 画像を圧縮
+        const compressedFile = await compressImage(file)
+
+        const formData = new FormData()
+        formData.append('file', compressedFile)
+
         const res = await fetch(`${API_URL}/upload`, {
           method: 'POST',
           headers: getAuthHeaders(),
