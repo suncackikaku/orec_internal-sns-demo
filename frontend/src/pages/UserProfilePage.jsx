@@ -12,6 +12,7 @@ const API_URL = import.meta.env.VITE_API_URL || '/api'
 
 function UserProfilePage() {
   const { id } = useParams()
+  console.log('UserProfilePage id:', id)
   const navigate = useNavigate()
   const { user, logout, getAuthHeaders } = useAuth()
   const [profile, setProfile] = useState(null)

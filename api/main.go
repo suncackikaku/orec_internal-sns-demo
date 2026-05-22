@@ -512,6 +512,14 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 
 func getMeHandler(w http.ResponseWriter, r *http.Request) {
 	user := r.Context().Value("user").(*auth.User)
+
+	// Verify user still exists in database
+	_, err := (&DBAuth{db: db}).GetUserByID(user.ID)
+	if err != nil {
+		http.Error(w, "User not found", http.StatusUnauthorized)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(user)
 }

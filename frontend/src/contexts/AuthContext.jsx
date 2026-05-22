@@ -45,6 +45,7 @@ export function AuthProvider({ children }) {
       })
       if (res.ok) {
         const userData = await res.json()
+        console.log('AuthContext fetchUser:', userData)
         setUser(userData)
       } else {
         localStorage.removeItem('token')
