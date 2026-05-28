@@ -130,6 +130,7 @@ type Post struct {
 	AuthorName      string         `json:"author_name" db:"author_name"`
 	Body            string         `json:"body" db:"body"`
 	Tags            pq.StringArray `json:"tags" db:"tags"`
+	DepartmentTags  pq.StringArray `json:"department_tags" db:"department_tags"`
 	ImageURLs       pq.StringArray `json:"image_urls" db:"image_urls"`
 	VisibilityType  string         `json:"visibility_type" db:"visibility_type"`
 	CreatedAt       time.Time      `json:"created_at" db:"created_at"`
@@ -624,21 +625,40 @@ func getDepartment(w http.ResponseWriter, r *http.Request) {
 	var posts []Post
 	if isSameDept {
 		// Same department: show 'company' and 'department' visibility posts
+		// Include posts tagged with this department via post_department_tags
 		err = db.Select(&posts, `
-			SELECT p.id, p.author_id, u.display_name as author_name, p.body, p.tags, p.image_urls, p.visibility_type, p.created_at 
+			SELECT p.id, p.author_id, u.display_name as author_name, p.body, p.tags, 
+				COALESCE(array_agg(d.name) FILTER (WHERE d.name IS NOT NULL), ARRAY[]::text[]) as department_tags,
+				p.image_urls, p.visibility_type, p.created_at 
 			FROM posts p 
 			JOIN users u ON p.author_id = u.id 
-			WHERE u.primary_department_id = $1 
+			LEFT JOIN post_department_tags pdt ON p.id = pdt.post_id
+			LEFT JOIN departments d ON pdt.department_id = d.id
+			WHERE (
+				u.primary_department_id = $1 
+				OR pdt.department_id = $1
+			)
 			  AND p.visibility_type IN ('company', 'department')
+			GROUP BY p.id, u.display_name
 			ORDER BY p.created_at DESC`, deptID)
 	} else {
 		// Different department: show only 'company' visibility posts
-		err = db.Select(&posts, `
-			SELECT p.id, p.author_id, u.display_name as author_name, p.body, p.tags, p.image_urls, p.visibility_type, p.created_at 
+		// Include posts tagged with this department via post_department_tags
+		err = db.Select(
+			&posts, `
+			SELECT p.id, p.author_id, u.display_name as author_name, p.body, p.tags, 
+				COALESCE(array_agg(d.name) FILTER (WHERE d.name IS NOT NULL), ARRAY[]::text[]) as department_tags,
+				p.image_urls, p.visibility_type, p.created_at 
 			FROM posts p 
 			JOIN users u ON p.author_id = u.id 
-			WHERE u.primary_department_id = $1 
+			LEFT JOIN post_department_tags pdt ON p.id = pdt.post_id
+			LEFT JOIN departments d ON pdt.department_id = d.id
+			WHERE (
+				u.primary_department_id = $1 
+				OR pdt.department_id = $1
+			)
 			  AND p.visibility_type = 'company'
+			GROUP BY p.id, u.display_name
 			ORDER BY p.created_at DESC`, deptID)
 	}
 	if err != nil {
@@ -1196,7 +1216,9 @@ func getFeedHandler(w http.ResponseWriter, r *http.Request) {
 
 	query := `
 		SELECT 
-			p.id, p.author_id, u.display_name as author_name, p.body, p.tags, p.image_urls, p.visibility_type, p.created_at,
+			p.id, p.author_id, u.display_name as author_name, p.body, p.tags, 
+			COALESCE(array_agg(d.name) FILTER (WHERE d.name IS NOT NULL), ARRAY[]::text[]) as department_tags,
+			p.image_urls, p.visibility_type, p.created_at,
 			COALESCE(up.profile_image_url, '') as author_image_url,
 			COALESCE(l.count, 0) as like_count,
 			COALESCE(c.count, 0) as comment_count,
@@ -1204,6 +1226,8 @@ func getFeedHandler(w http.ResponseWriter, r *http.Request) {
 		FROM posts p
 		JOIN users u ON p.author_id = u.id
 		LEFT JOIN user_profiles up ON u.id = up.user_id
+		LEFT JOIN post_department_tags pdt ON p.id = pdt.post_id
+		LEFT JOIN departments d ON pdt.department_id = d.id
 		LEFT JOIN (
 			SELECT post_id, COUNT(*) as count 
 			FROM likes 
@@ -1249,6 +1273,16 @@ func getFeedHandler(w http.ResponseWriter, r *http.Request) {
 					WHERE u2.id = $1
 				)
 			)
+			OR EXISTS (
+				SELECT 1 
+				FROM post_department_tags pdt
+				WHERE pdt.post_id = p.id 
+				  AND pdt.department_id = (
+						SELECT primary_department_id 
+						FROM users 
+						WHERE id = $1
+					)
+			)
 		)`
 	} else {
 		query += `
@@ -1263,6 +1297,7 @@ func getFeedHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query += `
+		GROUP BY p.id, u.display_name, up.profile_image_url, l.count, c.count, ul.user_id
 		ORDER BY p.created_at DESC
 		LIMIT $2 OFFSET $3`
 
@@ -1643,6 +1678,7 @@ func createPostHandler(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Body           string   `json:"body"`
 		Tags           []string `json:"tags"`
+		DepartmentIDs  []string `json:"department_ids"`
 		ImageURLs      []string `json:"image_urls"`
 		VisibilityType string   `json:"visibility_type"`
 	}
@@ -1701,6 +1737,21 @@ func createPostHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	// 複数部署タグ付け（post_department_tags）
+	if len(req.DepartmentIDs) > 0 {
+		for _, deptID := range req.DepartmentIDs {
+			_, err = db.Exec(`
+				INSERT INTO post_department_tags (post_id, department_id)
+				VALUES ($1, $2)
+				ON CONFLICT DO NOTHING`,
+				postID, deptID)
+			if err != nil {
+				// エラーログを出すが、投稿自体は成功させる
+				fmt.Printf("Failed to insert post_department_tag: %v\n", err)
+			}
+		}
 	}
 
 	// Create activity for new post

@@ -19,7 +19,7 @@ function FloatingPostButton() {
   const { user, getAuthHeaders } = useAuth()
   const [open, setOpen] = useState(false)
   const [body, setBody] = useState('')
-  const [tags, setTags] = useState([])
+  const [departmentIds, setDepartmentIds] = useState([])
   const [departments, setDepartments] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -61,7 +61,7 @@ function FloatingPostButton() {
         },
         body: JSON.stringify({ 
           body: body.trim(),
-          tags: tags,
+          department_ids: departmentIds,
           image_urls: imageURLs,
           visibility_type: visibilityType
         })
@@ -72,7 +72,7 @@ function FloatingPostButton() {
       }
 
       setBody('')
-      setTags([])
+      setDepartmentIds([])
       setImageURLs([])
       setVisibilityType('company')
       setOpen(false)
@@ -134,12 +134,12 @@ function FloatingPostButton() {
     setImageURLs(prev => prev.filter((_, i) => i !== index))
   }
 
-  const toggleTag = (deptName) => {
-    setTags(prev => {
-      if (prev.includes(deptName)) {
-        return prev.filter(t => t !== deptName)
+  const toggleDepartment = (deptId) => {
+    setDepartmentIds(prev => {
+      if (prev.includes(deptId)) {
+        return prev.filter(id => id !== deptId)
       }
-      return [...prev, deptName]
+      return [...prev, deptId]
     })
   }
 
@@ -201,15 +201,15 @@ function FloatingPostButton() {
                   <button
                     key={dept.id}
                     type="button"
-                    onClick={() => toggleTag(dept.name)}
+                    onClick={() => toggleDepartment(dept.id)}
                     className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm transition-colors ${
-                      tags.includes(dept.name)
+                      departmentIds.includes(dept.id)
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-muted text-muted-foreground hover:bg-muted/80'
                     }`}
                   >
                     {dept.name}
-                    {tags.includes(dept.name) && <X className="h-3 w-3" />}
+                    {departmentIds.includes(dept.id) && <X className="h-3 w-3" />}
                   </button>
                 ))}
               </div>

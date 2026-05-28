@@ -159,6 +159,16 @@ function DepartmentPage() {
                             ))}
                           </div>
                         )}
+                        
+                        {post.department_tags && post.department_tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {post.department_tags.map((tag, index) => (
+                              <Badge key={index} variant="outline" className="text-xs text-blue-600 border-blue-300">
+                                #{tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </CardContent>
