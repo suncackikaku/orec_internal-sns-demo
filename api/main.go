@@ -309,7 +309,6 @@ func main() {
 	r.Post("/api/auth/login", loginHandler)
 	r.Post("/api/auth/woff", woffAuthHandler)
 	r.Get("/api/departments", getDepartmentsList)
-	r.Get("/api/departments/{deptId}", getDepartment)
 	r.Get("/api/users/{userId}/profile", getUserProfile)
 
 	// Static file serving for uploads
@@ -333,6 +332,9 @@ func main() {
 		r.Get("/api/users/{userId}/followers", getFollowersHandler)
 		r.Get("/api/users/{userId}/following", getFollowingHandler)
 		r.Get("/api/users/{userId}/is-following", isFollowingHandler)
+
+		// 部署機能
+		r.Get("/api/departments/{deptId}", getDepartment)
 
 		// 投稿機能
 		r.Post("/api/posts", createPostHandler)
@@ -588,6 +590,9 @@ func getDepartmentsList(w http.ResponseWriter, r *http.Request) {
 func getDepartment(w http.ResponseWriter, r *http.Request) {
 	deptID := chi.URLParam(r, "deptId")
 
+	// Get current user from context (now authenticated route)
+	user := r.Context().Value("user").(*auth.User)
+
 	var dept Department
 	err := db.Get(&dept, "SELECT * FROM departments WHERE id = $1", deptID)
 	if err != nil {
@@ -610,13 +615,32 @@ func getDepartment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check if current user belongs to this department
+	var isSameDept bool
+	if user.DepartmentID.Valid {
+		isSameDept = user.DepartmentID.String == deptID
+	}
+
 	var posts []Post
-	err = db.Select(&posts, `
-		SELECT p.id, p.author_id, u.display_name as author_name, p.body, p.tags, p.image_urls, p.created_at 
-		FROM posts p 
-		JOIN users u ON p.author_id = u.id 
-		WHERE u.primary_department_id = $1 
-		ORDER BY p.created_at DESC`, deptID)
+	if isSameDept {
+		// Same department: show 'company' and 'department' visibility posts
+		err = db.Select(&posts, `
+			SELECT p.id, p.author_id, u.display_name as author_name, p.body, p.tags, p.image_urls, p.visibility_type, p.created_at 
+			FROM posts p 
+			JOIN users u ON p.author_id = u.id 
+			WHERE u.primary_department_id = $1 
+			  AND p.visibility_type IN ('company', 'department')
+			ORDER BY p.created_at DESC`, deptID)
+	} else {
+		// Different department: show only 'company' visibility posts
+		err = db.Select(&posts, `
+			SELECT p.id, p.author_id, u.display_name as author_name, p.body, p.tags, p.image_urls, p.visibility_type, p.created_at 
+			FROM posts p 
+			JOIN users u ON p.author_id = u.id 
+			WHERE u.primary_department_id = $1 
+			  AND p.visibility_type = 'company'
+			ORDER BY p.created_at DESC`, deptID)
+	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
