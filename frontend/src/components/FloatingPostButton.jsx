@@ -25,6 +25,7 @@ function FloatingPostButton() {
   const [error, setError] = useState('')
   const [imageURLs, setImageURLs] = useState([])
   const [uploadingImages, setUploadingImages] = useState(false)
+  const [visibilityType, setVisibilityType] = useState('company')
 
   useEffect(() => {
     if (open) {
@@ -61,7 +62,8 @@ function FloatingPostButton() {
         body: JSON.stringify({ 
           body: body.trim(),
           tags: tags,
-          image_urls: imageURLs
+          image_urls: imageURLs,
+          visibility_type: visibilityType
         })
       })
 
@@ -72,6 +74,7 @@ function FloatingPostButton() {
       setBody('')
       setTags([])
       setImageURLs([])
+      setVisibilityType('company')
       setOpen(false)
       // Refresh the page to show new post
       window.location.reload()
@@ -258,6 +261,20 @@ function FloatingPostButton() {
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* 公開範囲選択 */}
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-muted-foreground">公開範囲:</label>
+              <select
+                value={visibilityType}
+                onChange={(e) => setVisibilityType(e.target.value)}
+                className="text-sm border rounded-md px-2 py-1 bg-background"
+              >
+                <option value="company">全社公開</option>
+                <option value="department">部署限定</option>
+                <option value="private">自分のみ</option>
+              </select>
             </div>
             
             <div className="flex justify-end">
