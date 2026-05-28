@@ -125,15 +125,16 @@ type UserProfile struct {
 }
 
 type Post struct {
-	ID            string         `json:"id" db:"id"`
-	AuthorID      string         `json:"author_id" db:"author_id"`
-	AuthorName    string         `json:"author_name" db:"author_name"`
-	Body          string         `json:"body" db:"body"`
-	Tags          pq.StringArray `json:"tags" db:"tags"`
-	ImageURLs     pq.StringArray `json:"image_urls" db:"image_urls"`
-	CreatedAt     time.Time      `json:"created_at" db:"created_at"`
-	LikeCount     int            `json:"like_count" db:"like_count"`
-	CommentCount  int            `json:"comment_count" db:"comment_count"`
+	ID              string         `json:"id" db:"id"`
+	AuthorID        string         `json:"author_id" db:"author_id"`
+	AuthorName      string         `json:"author_name" db:"author_name"`
+	Body            string         `json:"body" db:"body"`
+	Tags            pq.StringArray `json:"tags" db:"tags"`
+	ImageURLs       pq.StringArray `json:"image_urls" db:"image_urls"`
+	VisibilityType  string         `json:"visibility_type" db:"visibility_type"`
+	CreatedAt       time.Time      `json:"created_at" db:"created_at"`
+	LikeCount       int            `json:"like_count" db:"like_count"`
+	CommentCount    int            `json:"comment_count" db:"comment_count"`
 }
 
 type Comment struct {
@@ -1171,7 +1172,7 @@ func getFeedHandler(w http.ResponseWriter, r *http.Request) {
 
 	query := `
 		SELECT 
-			p.id, p.author_id, u.display_name as author_name, p.body, p.tags, p.image_urls, p.created_at,
+			p.id, p.author_id, u.display_name as author_name, p.body, p.tags, p.image_urls, p.visibility_type, p.created_at,
 			COALESCE(up.profile_image_url, '') as author_image_url,
 			COALESCE(l.count, 0) as like_count,
 			COALESCE(c.count, 0) as comment_count,
@@ -1193,7 +1194,17 @@ func getFeedHandler(w http.ResponseWriter, r *http.Request) {
 
 	if filter == "related" {
 		query += `
-		WHERE p.author_id = $1 
+		WHERE (
+			p.visibility_type = 'company' 
+			OR (p.visibility_type = 'department' AND p.author_id IN (
+				SELECT id FROM users 
+				WHERE primary_department_id = (
+					SELECT primary_department_id FROM users WHERE id = $1
+				)
+			))
+			OR (p.visibility_type = 'private' AND p.author_id = $1)
+		) AND (
+			p.author_id = $1 
 			OR p.author_id IN (
 				SELECT id 
 				FROM users 
@@ -1213,7 +1224,18 @@ func getFeedHandler(w http.ResponseWriter, r *http.Request) {
 					JOIN departments d ON u2.primary_department_id = d.id 
 					WHERE u2.id = $1
 				)
-			)`
+			)
+		)`
+	} else {
+		query += `
+		WHERE p.visibility_type = 'company' 
+			OR (p.visibility_type = 'department' AND p.author_id IN (
+				SELECT id FROM users 
+				WHERE primary_department_id = (
+					SELECT primary_department_id FROM users WHERE id = $1
+				)
+			))
+			OR (p.visibility_type = 'private' AND p.author_id = $1)`
 	}
 
 	query += `
@@ -1595,9 +1617,10 @@ func createPostHandler(w http.ResponseWriter, r *http.Request) {
 	user := r.Context().Value("user").(*auth.User)
 
 	var req struct {
-		Body      string   `json:"body"`
-		Tags      []string `json:"tags"`
-		ImageURLs []string `json:"image_urls"`
+		Body           string   `json:"body"`
+		Tags           []string `json:"tags"`
+		ImageURLs      []string `json:"image_urls"`
+		VisibilityType string   `json:"visibility_type"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -1614,32 +1637,42 @@ func createPostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// デフォルトは全社公開
+	visibilityType := req.VisibilityType
+	if visibilityType == "" {
+		visibilityType = "company"
+	}
+	if visibilityType != "company" && visibilityType != "department" && visibilityType != "group" && visibilityType != "private" {
+		http.Error(w, "Invalid visibility_type", http.StatusBadRequest)
+		return
+	}
+
 	var postID string
 	var err error
 	if len(req.Tags) > 0 && len(req.ImageURLs) > 0 {
 		err = db.QueryRow(`
-			INSERT INTO posts (author_id, body, tags, image_urls)
-			VALUES ($1, $2, $3, $4)
+			INSERT INTO posts (author_id, body, tags, image_urls, visibility_type)
+			VALUES ($1, $2, $3, $4, $5)
 			RETURNING id`,
-			user.ID, req.Body, pq.Array(req.Tags), pq.Array(req.ImageURLs)).Scan(&postID)
+			user.ID, req.Body, pq.Array(req.Tags), pq.Array(req.ImageURLs), visibilityType).Scan(&postID)
 	} else if len(req.Tags) > 0 {
 		err = db.QueryRow(`
-			INSERT INTO posts (author_id, body, tags)
-			VALUES ($1, $2, $3)
+			INSERT INTO posts (author_id, body, tags, visibility_type)
+			VALUES ($1, $2, $3, $4)
 			RETURNING id`,
-			user.ID, req.Body, pq.Array(req.Tags)).Scan(&postID)
+			user.ID, req.Body, pq.Array(req.Tags), visibilityType).Scan(&postID)
 	} else if len(req.ImageURLs) > 0 {
 		err = db.QueryRow(`
-			INSERT INTO posts (author_id, body, image_urls)
-			VALUES ($1, $2, $3)
+			INSERT INTO posts (author_id, body, image_urls, visibility_type)
+			VALUES ($1, $2, $3, $4)
 			RETURNING id`,
-			user.ID, req.Body, pq.Array(req.ImageURLs)).Scan(&postID)
+			user.ID, req.Body, pq.Array(req.ImageURLs), visibilityType).Scan(&postID)
 	} else {
 		err = db.QueryRow(`
-			INSERT INTO posts (author_id, body)
-			VALUES ($1, $2)
+			INSERT INTO posts (author_id, body, visibility_type)
+			VALUES ($1, $2, $3)
 			RETURNING id`,
-			user.ID, req.Body).Scan(&postID)
+			user.ID, req.Body, visibilityType).Scan(&postID)
 	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

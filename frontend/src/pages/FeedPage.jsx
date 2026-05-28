@@ -230,6 +230,13 @@ function FeedPage() {
                       >
                         {post.author_name}
                       </span>
+                      {post.visibility_type !== 'company' && (
+                        <Badge variant="outline" className="text-xs">
+                          {post.visibility_type === 'department' && '部署限定'}
+                          {post.visibility_type === 'private' && '自分のみ'}
+                          {post.visibility_type === 'group' && 'グループ限定'}
+                        </Badge>
+                      )}
                       <span className="text-xs text-muted-foreground">
                         {formatTimeAgo(post.created_at)}
                       </span>
