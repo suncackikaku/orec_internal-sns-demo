@@ -125,13 +125,24 @@ type UserProfile struct {
 }
 
 type Post struct {
-	ID         string         `json:"id" db:"id"`
-	AuthorID   string         `json:"author_id" db:"author_id"`
-	AuthorName string         `json:"author_name" db:"author_name"`
-	Body       string         `json:"body" db:"body"`
-	Tags       pq.StringArray `json:"tags" db:"tags"`
-	ImageURLs  pq.StringArray `json:"image_urls" db:"image_urls"`
-	CreatedAt  time.Time      `json:"created_at" db:"created_at"`
+	ID            string         `json:"id" db:"id"`
+	AuthorID      string         `json:"author_id" db:"author_id"`
+	AuthorName    string         `json:"author_name" db:"author_name"`
+	Body          string         `json:"body" db:"body"`
+	Tags          pq.StringArray `json:"tags" db:"tags"`
+	ImageURLs     pq.StringArray `json:"image_urls" db:"image_urls"`
+	CreatedAt     time.Time      `json:"created_at" db:"created_at"`
+	LikeCount     int            `json:"like_count" db:"like_count"`
+	CommentCount  int            `json:"comment_count" db:"comment_count"`
+}
+
+type Comment struct {
+	ID         string    `json:"id" db:"id"`
+	PostID     string    `json:"post_id" db:"post_id"`
+	AuthorID   string    `json:"author_id" db:"author_id"`
+	AuthorName string    `json:"author_name" db:"author_name"`
+	Body       string    `json:"body" db:"body"`
+	CreatedAt  time.Time `json:"created_at" db:"created_at"`
 }
 
 type DepartmentResponse struct {
@@ -331,6 +342,11 @@ func main() {
 		r.Delete("/api/posts/{postId}/like", unlikeHandler)
 		r.Get("/api/posts/{postId}/likes", getLikesHandler)
 		r.Get("/api/posts/{postId}/is-liked", isLikedHandler)
+
+		// コメント機能
+		r.Post("/api/posts/{postId}/comments", createCommentHandler)
+		r.Get("/api/posts/{postId}/comments", getCommentsHandler)
+		r.Delete("/api/posts/{postId}/comments/{commentId}", deleteCommentHandler)
 
 		// フィード機能
 		r.Get("/api/feed", getFeedHandler)
@@ -1030,6 +1046,98 @@ func isLikedHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]bool{"is_liked": count > 0})
 }
 
+// Comment handlers
+func createCommentHandler(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value("user").(*auth.User)
+	postID := chi.URLParam(r, "postId")
+
+	var req struct {
+		Body string `json:"body"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if req.Body == "" {
+		http.Error(w, "Body is required", http.StatusBadRequest)
+		return
+	}
+
+	if len([]rune(req.Body)) > 1000 {
+		http.Error(w, "Body must be 1000 characters or less", http.StatusBadRequest)
+		return
+	}
+
+	var commentID string
+	err := db.QueryRow(`
+		INSERT INTO comments (post_id, author_id, body)
+		VALUES ($1, $2, $3)
+		RETURNING id`,
+		postID, user.ID, req.Body).Scan(&commentID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"id":      commentID,
+		"message": "Comment created successfully",
+	})
+}
+
+func getCommentsHandler(w http.ResponseWriter, r *http.Request) {
+	postID := chi.URLParam(r, "postId")
+
+	var comments []Comment
+	err := db.Select(&comments, `
+		SELECT c.id, c.post_id, c.author_id, u.display_name as author_name, c.body, c.created_at
+		FROM comments c
+		JOIN users u ON c.author_id = u.id
+		WHERE c.post_id = $1
+		ORDER BY c.created_at DESC`,
+		postID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(comments)
+}
+
+func deleteCommentHandler(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value("user").(*auth.User)
+	commentID := chi.URLParam(r, "commentId")
+
+	// Check if comment exists and belongs to user
+	var authorID string
+	err := db.Get(&authorID, `SELECT author_id FROM comments WHERE id = $1`, commentID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Comment not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if authorID != user.ID {
+		http.Error(w, "Unauthorized", http.StatusForbidden)
+		return
+	}
+
+	_, err = db.Exec(`DELETE FROM comments WHERE id = $1`, commentID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Comment deleted successfully"})
+}
+
 // Feed handler
 func getFeedHandler(w http.ResponseWriter, r *http.Request) {
 	user := r.Context().Value("user").(*auth.User)
@@ -1057,6 +1165,7 @@ func getFeedHandler(w http.ResponseWriter, r *http.Request) {
 		Post
 		AuthorImageURL string `json:"author_image_url" db:"author_image_url"`
 		LikeCount      int    `json:"like_count" db:"like_count"`
+		CommentCount   int    `json:"comment_count" db:"comment_count"`
 		IsLiked        bool   `json:"is_liked" db:"is_liked"`
 	}
 
@@ -1065,6 +1174,7 @@ func getFeedHandler(w http.ResponseWriter, r *http.Request) {
 			p.id, p.author_id, u.display_name as author_name, p.body, p.tags, p.image_urls, p.created_at,
 			COALESCE(up.profile_image_url, '') as author_image_url,
 			COALESCE(l.count, 0) as like_count,
+			COALESCE(c.count, 0) as comment_count,
 			CASE WHEN ul.user_id IS NOT NULL THEN true ELSE false END as is_liked
 		FROM posts p
 		JOIN users u ON p.author_id = u.id
@@ -1074,6 +1184,11 @@ func getFeedHandler(w http.ResponseWriter, r *http.Request) {
 			FROM likes 
 			GROUP BY post_id
 		) l ON p.id = l.post_id
+		LEFT JOIN (
+			SELECT post_id, COUNT(*) as count 
+			FROM comments 
+			GROUP BY post_id
+		) c ON p.id = c.post_id
 		LEFT JOIN likes ul ON p.id = ul.post_id AND ul.user_id = $1`
 
 	if filter == "related" {

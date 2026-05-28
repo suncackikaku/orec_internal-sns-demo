@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>OREC HD Web社内報 仕様差分書 v1.1（コンテンツ設計追加分）</title>
+<style>
+  body {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 32px 60px;
+    font-family: 'Arial', 'YuGothic', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'MS PGothic', sans-serif;
+    color: #1a1a1a;
+    line-height: 1.7;
+    background: #fff;
+    font-size: 11pt;
+  }
+  h1 {
+    font-size: 20pt;
+    text-align: center;
+    border-bottom: 3px solid #1F497D;
+    padding-bottom: 12px;
+    margin-bottom: 8px;
+    color: #1F497D;
+  }
+  .doc-subtitle {
+    text-align: center;
+    color: #555;
+    font-size: 10pt;
+    margin-bottom: 40px;
+  }
+  h2 {
+    font-size: 14pt;
+    border-left: 5px solid #1F497D;
+    padding-left: 10px;
+    margin-top: 2em;
+    color: #1F497D;
+  }
+  h3 {
+    font-size: 12pt;
+    border-bottom: 1px dashed #2E74B5;
+    padding-bottom: 4px;
+    color: #2E74B5;
+    margin-top: 1.5em;
+  }
+  h4 {
+    font-size: 11pt;
+    color: #333;
+    margin-top: 1.2em;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1.5em;
+    font-size: 10.5pt;
+  }
+  th, td {
+    border: 1px solid #aaa;
+    padding: 7px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th {
+    background-color: #dce6f1;
+    font-weight: bold;
+    color: #1F497D;
+  }
+  tr:nth-child(even) td {
+    background-color: #f7fafd;
+  }
+  pre {
+    background: #f4f6f9;
+    border: 1px solid #ccd;
+    border-left: 4px solid #2E74B5;
+    padding: 12px 16px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 9.5pt;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    margin: 1em 0;
+  }
+  .alert-new {
+    background: #e2efda;
+    border: 1px solid #70AD47;
+    border-left: 5px solid #70AD47;
+    padding: 10px 15px;
+    margin: 12px 0;
+    border-radius: 2px;
+  }
+  .alert-new strong { color: #375623; }
+  .alert-change {
+    background: #fff2cc;
+    border: 1px solid #ED7D31;
+    border-left: 5px solid #ED7D31;
+    padding: 10px 15px;
+    margin: 12px 0;
+    border-radius: 2px;
+  }
+  .alert-change strong { color: #7f4f18; }
+  .alert-note {
+    background: #dce6f1;
+    border: 1px solid #2E74B5;
+    border-left: 5px solid #2E74B5;
+    padding: 10px 15px;
+    margin: 12px 0;
+    border-radius: 2px;
+  }
+  .alert-note strong { color: #1F497D; }
+  .badge-new {
+    display: inline-block;
+    background: #70AD47;
+    color: #fff;
+    font-size: 8pt;
+    font-weight: bold;
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+  .badge-change {
+    display: inline-block;
+    background: #ED7D31;
+    color: #fff;
+    font-size: 8pt;
+    font-weight: bold;
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+  .badge-confirm {
+    display: inline-block;
+    background: #e53935;
+    color: #fff;
+    font-size: 8pt;
+    font-weight: bold;
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+  .toc { margin-bottom: 40px; }
+  .toc ul { list-style: none; padding-left: 16px; }
+  .toc > ul { padding-left: 0; }
+  .toc li { margin-bottom: 4px; }
+  .toc a { text-decoration: none; color: #2E74B5; }
+  .toc a:hover { text-decoration: underline; }
+  .wireframe {
+    background: #f8f8f8;
+    border: 1px solid #bbb;
+    padding: 10px 16px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 9.5pt;
+    white-space: pre;
+    overflow-x: auto;
+    margin: 1em 0;
+  }
+  ul { padding-left: 1.5em; }
+  li { margin-bottom: 4px; }
+  .phase-demo { background: #e2efda; }
+  .phase-mvp  { background: #dce6f1; }
+  .phase-future { background: #f4f4f4; }
+</style>
+</head>
+<body>
+
+<h1>OREC HD Web社内報<br>仕様差分書 v1.1</h1>
+<p class="doc-subtitle">コンテンツ設計追加分 ― 既存仕様書（v1.0）との差分のみ記載</p>
+
+<div class="toc">
+  <h2 style="border:none;padding:0;font-size:13pt;">目次</h2>
+  <ul>
+    <li><a href="#sec1">1. 文書情報・変更概要</a></li>
+    <li><a href="#sec2">2. 追加コンテンツ設計</a>
+      <ul>
+        <li><a href="#sec2-1">2.1 部署紹介ページ</a></li>
+        <li><a href="#sec2-2">2.2 社員プロフィールページ（拡張）</a></li>
+        <li><a href="#sec2-3">2.3 全社フィード（複数部署タグ対応）</a></li>
+        <li><a href="#sec2-4">2.4 サンクスカード（ピアボーナス）</a></li>
+        <li><a href="#sec2-5">2.5 キャリアインタビュー記事</a></li>
+        <li><a href="#sec2-6">2.6 座談会コンテンツ</a></li>
+        <li><a href="#sec2-7">2.7 部署からのお知らせ</a></li>
+      </ul>
+    </li>
+    <li><a href="#sec3">3. サイネージモード（製造スタッフ向け）</a></li>
+    <li><a href="#sec4">4. 投稿ガイドライン・リテラシー対策</a></li>
+    <li><a href="#sec5">5. データ設計追加（ER差分）</a></li>
+    <li><a href="#sec6">6. API仕様追加</a></li>
+    <li><a href="#sec7">7. 画面ワイヤー追加</a></li>
+    <li><a href="#sec8">8. 実装フェーズ計画（更新版）</a></li>
+    <li><a href="#sec9">9. 実装指示プロンプト追加</a></li>
+  </ul>
+</div>
+
+<!-- ======================================================= -->
+<h2 id="sec1">1. 文書情報・変更概要</h2>
+
+<table>
+  <tr><th>文書名</th><td>OREC HD Web社内報 仕様差分書 v1.1（コンテンツ設計追加分）</td></tr>
+  <tr><th>版数</th><td>1.1（差分追記）</td></tr>
+  <tr><th>ベース仕様書</th><td>LINE WORKS連携 社内SNSシステム 仕様書 v1.0（2026-05-01）</td></tr>
+  <tr><th>作成日</th><td>2026-05-05</td></tr>
+  <tr><th>作成者</th><td>サンカクキカク（島田・宇佐川）</td></tr>
+  <tr><th>想定読者</th><td>開発担当（TBA）</td></tr>
+  <tr><th>目的</th><td>2026-05-01 MTG後のコンテンツ設計セッションで確定した追加仕様を開発担当へ伝達する。本書はv1.0仕様書を<strong>上書きせず差分のみ</strong>を記載する。v1.0と本書を合わせて読むこと。</td></tr>
+</table>
+
+<h3>変更サマリー</h3>
+<table>
+  <tr><th>分類</th><th>項目</th><th>ステータス</th></tr>
+  <tr><td><span class="badge-new">NEW</span></td><td>部署紹介ページ（Department Page）</td><td>デモ実装対象</td></tr>
+  <tr><td><span class="badge-new">NEW</span></td><td>社員プロフィールページ（拡張フィールド）</td><td>デモ実装対象</td></tr>
+  <tr><td><span class="badge-change">変更</span></td><td>投稿への複数部署タグ付与（多対多）</td><td>Phase 1へ組み込み</td></tr>
+  <tr><td><span class="badge-new">NEW</span></td><td>サンクスカード（ピアボーナス）機能</td><td>Phase 2</td></tr>
+  <tr><td><span class="badge-new">NEW</span></td><td>キャリアインタビュー記事（AI生成）</td><td>Phase 3</td></tr>
+  <tr><td><span class="badge-new">NEW</span></td><td>座談会コンテンツ管理</td><td>Phase 3</td></tr>
+  <tr><td><span class="badge-new">NEW</span></td><td>部署からのお知らせ機能</td><td>Phase 2</td></tr>
+  <tr><td><span class="badge-new">NEW</span></td><td>サイネージモード（別URL・ログイン不要）</td><td>Phase 3</td></tr>
+  <tr><td><span class="badge-new">NEW</span></td><td>投稿ガイドライン・初回同意フロー</td><td>Phase 2</td></tr>
+  <tr><td><span class="badge-change">変更</span></td><td>フェーズ計画全体見直し（デモ→MVP→将来）</td><td>全体</td></tr>
+</table>
+
+<div class="alert-note">
+  <strong>【凡例】</strong>
+  <span class="badge-new">NEW</span> 既存仕様書に存在しない新規追加
+  <span class="badge-change">変更</span> 既存仕様書の内容を修正・拡張
+  <span class="badge-confirm">要確認</span> クライアント確認待ち・開発判断が必要な項目
+</div>
+
+<!-- ======================================================= -->
+<h2 id="sec2">2. 追加コンテンツ設計</h2>
+
+<h3 id="sec2-1">2.1 <span class="badge-new">NEW</span> 部署紹介ページ（Department Page）</h3>
+
+<h4>概要</h4>
+<p>
+  各部署ごとに独立したページを設け、部署の概要・メンバー・投稿フィードを一覧できる。
+  部署担当者（各部署の運用責任者）が入力・管理する。デモ実装の最小要件に含む。
+</p>
+
+<h4>表示コンテンツ</h4>
+<table>
+  <tr><th>要素</th><th>説明</th><th>入力者</th></tr>
+  <tr><td>部署名・キャッチコピー</td><td>部署の一言説明</td><td>部署担当者</td></tr>
+  <tr><td>部署紹介文</td><td>業務内容・役割の説明（任意）</td><td>部署担当者</td></tr>
+  <tr><td>カバー画像</td><td>部署イメージ画像（任意）</td><td>部署担当者</td></tr>
+  <tr><td>メンバー一覧</td><td>所属社員のサムネイル + 名前（LINEWORKSから自動同期）</td><td>自動</td></tr>
+  <tr><td>部署フィード</td><td>この部署タグが付いた投稿の一覧（全社フィードと同一データ）</td><td>自動</td></tr>
+  <tr><td>部署からのお知らせ</td><td>2.7参照</td><td>部署担当者</td></tr>
+</table>
+
+<h4>新規テーブル要件</h4>
+<p>既存の <code>departments</code> テーブルに以下カラムを追加する：</p>
+<pre><code>ALTER TABLE departments ADD COLUMN catchcopy TEXT;
+ALTER TABLE departments ADD COLUMN description TEXT;
+ALTER TABLE departments ADD COLUMN cover_image_url TEXT;
+ALTER TABLE departments ADD COLUMN manager_user_id UUID REFERENCES users(id);
+ALTER TABLE departments ADD COLUMN updated_at TIMESTAMPTZ DEFAULT NOW();</code></pre>
+
+<div class="alert-new">
+  <strong>【デモ実装方針】</strong>
+  デモ段階では代表的な2〜3部署のデータを手動投入してよい。部署担当者向けの入力UIは将来実装でもよいが、表示側はデモに必要。
+</div>
+
+
+<h3 id="sec2-2">2.2 <span class="badge-new">NEW</span> 社員プロフィールページ（拡張フィールド）</h3>
+
+<h4>概要</h4>
+<p>
+  v1.0の <code>users</code> テーブルはLINE WORKSから自動同期される基本情報のみ。
+  今回、社員が自ら記入する「社内報的プロフィール」フィールドを追加する。
+  目的は社員間のコミュニケーション支援（趣味・人となりの共有）。デモ実装の最小要件に含む。
+</p>
+
+<h4>追加プロフィールフィールド</h4>
+<table>
+  <tr><th>フィールド</th><th>必須/任意</th><th>最大文字数</th><th>備考</th></tr>
+  <tr><td>趣味・関心</td><td>任意</td><td>200字</td><td>複数入力可（タグ形式推奨）</td></tr>
+  <tr><td>得意なこと・スキル</td><td>任意</td><td>200字</td><td></td></tr>
+  <tr><td>一言メッセージ</td><td>任意</td><td>100字</td><td>プロフィール画面の上部に表示</td></tr>
+  <tr><td>入社年</td><td>任意</td><td>年数（数値）</td><td></td></tr>
+  <tr><td>キャリア経歴</td><td>任意</td><td>500字</td><td>任意。キャリアインタビュー（2.5）とも連携</td></tr>
+  <tr><td>プロフィール写真</td><td>任意</td><td>-</td><td>LINE WORKSのアイコンとは別に社内報用を設定可</td></tr>
+</table>
+
+<div class="alert-note">
+  <strong>【必須フィールドの方針】</strong>
+  キャリア経歴以外は必須とすると入力負荷が高いため、全て任意とする。
+  ただし、入力完了率をKPIとして効果測定に含め、未入力の場合は「プロフィールを完成させよう」の促しUIを表示する（入力完了率が効果測定指標の一つ）。
+</div>
+
+<div class="alert-note">
+  <strong>【初期入力の進め方】</strong>
+  オフィス勤務のメンバーに先行して入力してもらい、製造スタッフは後追い。
+  管理者がプロフィール入力完了率を確認できるダッシュボード機能をPhase 2以降に実装する。
+</div>
+
+<h4>新規テーブル</h4>
+<pre><code>CREATE TABLE user_profiles (
+    user_id         UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    hobbies         TEXT,
+    skills          TEXT,
+    bio             TEXT,           -- 一言メッセージ
+    joined_year     SMALLINT,
+    career_history  TEXT,
+    profile_image_url TEXT,         -- 社内報用（LW iconとは別）
+    updated_at      TIMESTAMPTZ DEFAULT NOW()
+);</code></pre>
+
+
+<h3 id="sec2-3">2.3 <span class="badge-change">変更</span> 全社フィード（複数部署タグ対応）</h3>
+
+<h4>変更内容</h4>
+<p>
+  v1.0では投稿の <code>visibility_department_id</code> が単一FK（1部署のみ）。
+  今回、「営業部が製造部の頑張りを投稿する」などのクロス部署投稿ニーズに対応するため、
+  <strong>投稿に複数部署タグを紐付けられる多対多構成</strong>に変更する。
+</p>
+
+<div class="alert-change">
+  <strong>【v1.0からの変更】</strong>
+  <code>posts.visibility_department_id</code>（単一FK）を廃止し、<code>post_department_tags</code>中間テーブルで管理する。
+  公開範囲（company / department / private）の制御は <code>posts.visibility_type</code> で引き続き行う。
+</div>
+
+<h4>テーブル変更</h4>
+<pre><code>-- posts テーブルから以下カラムを削除（v1.0との差分）
+-- visibility_department_id UUID FK → 廃止
+
+-- 新規中間テーブルを追加
+CREATE TABLE post_department_tags (
+    post_id       UUID REFERENCES posts(id) ON DELETE CASCADE,
+    department_id UUID REFERENCES departments(id) ON DELETE CASCADE,
+    PRIMARY KEY (post_id, department_id)
+);
+
+-- 部署フィード取得例
+SELECT p.* FROM posts p
+JOIN post_department_tags pdt ON pdt.post_id = p.id
+WHERE pdt.department_id = $1
+ORDER BY p.created_at DESC;</code></pre>
+
+<h4>UI仕様</h4>
+<ul>
+  <li>投稿作成フォームで「部署タグ」を複数選択できるチェックボックスUIを追加。</li>
+  <li>タグ付けした部署は投稿カードに表示（例: <code>#製造部 #品質管理部</code>）。</li>
+  <li>タグ付きの投稿は全社フィードに流れ、かつ該当部署ページの部署フィードにも表示される。</li>
+  <li>公開範囲「部署限定」の場合、選択した部署のメンバーのみに表示。</li>
+</ul>
+
+
+<h3 id="sec2-4">2.4 <span class="badge-new">NEW</span> サンクスカード（ピアボーナス機能）</h3>
+
+<h4>概要</h4>
+<p>
+  社員が他の社員へ感謝・称賛を送る機能。通常の「いいね」とは別の独立した機能として設計する。
+  送付枚数はインセンティブ表彰の評価基準に組み込まれる（OREC HD人事部門と要連携）。
+</p>
+
+<h4>仕様</h4>
+<table>
+  <tr><th>項目</th><th>仕様</th></tr>
+  <tr><td>送付単位</td><td>ユーザー → ユーザー（投稿とは独立して送付可能）</td></tr>
+  <tr><td>メッセージ</td><td>必須・最大200字</td></tr>
+  <tr><td>月次上限</td><td>1ユーザーあたり送付枚数に上限を設ける（具体的な枚数は <span class="badge-confirm">要確認</span>）</td></tr>
+  <tr><td>公開範囲</td><td>全社公開（全社フィードに流れる）</td></tr>
+  <tr><td>いいね連携</td><td>サンクスカードの投稿にもいいね・コメント可能</td></tr>
+  <tr><td>インセンティブ連携</td><td>受取枚数を月次・年次で集計し、人事評価の参考指標とする</td></tr>
+  <tr><td>ランキング</td><td>月次の受取枚数ランキングをサイネージモードに表示（3章参照）</td></tr>
+</table>
+
+<h4>新規テーブル</h4>
+<pre><code>CREATE TABLE thanks_cards (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sender_id     UUID NOT NULL REFERENCES users(id),
+    receiver_id   UUID NOT NULL REFERENCES users(id),
+    message       TEXT NOT NULL,
+    created_at    TIMESTAMPTZ DEFAULT NOW(),
+    -- 月次上限チェック用
+    CONSTRAINT no_self_send CHECK (sender_id != receiver_id)
+);
+
+CREATE INDEX idx_thanks_cards_receiver ON thanks_cards(receiver_id, created_at);
+CREATE INDEX idx_thanks_cards_sender   ON thanks_cards(sender_id, created_at);
+
+-- 月次上限チェック用ビューまたは関数
+-- 例: 1ユーザーの当月送付枚数を取得
+-- SELECT COUNT(*) FROM thanks_cards
+-- WHERE sender_id = $1
+--   AND created_at >= date_trunc('month', NOW());</code></pre>
+
+<h4>API追加</h4>
+<table>
+  <tr><th>エンドポイント</th><th>メソッド</th><th>説明</th></tr>
+  <tr><td>/api/thanks-cards</td><td>POST</td><td>サンクスカード送付</td></tr>
+  <tr><td>/api/thanks-cards</td><td>GET</td><td>全社フィード用サンクスカード一覧</td></tr>
+  <tr><td>/api/thanks-cards/ranking</td><td>GET</td><td>月次受取ランキング（サイネージ用）</td></tr>
+  <tr><td>/api/users/{userId}/thanks-cards/received</td><td>GET</td><td>特定ユーザーの受取一覧</td></tr>
+</table>
+
+
+<h3 id="sec2-5">2.5 <span class="badge-new">NEW</span> キャリアインタビュー記事（AI生成）</h3>
+
+<h4>概要</h4>
+<p>
+  社員が社員をインタビューし、その内容をAIが記事化する。四半期に1本程度の発行を想定。
+  記事データはDB管理し、社内報の「特集記事」として専用ページで表示する。
+</p>
+
+<h4>制作フロー</h4>
+<table>
+  <tr><th>ステップ</th><th>作業内容</th><th>担当</th></tr>
+  <tr><td>①テーマ・被インタビュアー選定</td><td>人事/広報担当者が決定</td><td>OREC HD</td></tr>
+  <tr><td>②インタビュー実施</td><td>社員が社員にインタビュー（録音・メモ）</td><td>OREC HD</td></tr>
+  <tr><td>③AI記事生成</td><td>インタビュー素材をAIに入力し記事原稿生成</td><td>AIアシスト（要外部連携 or 管理画面機能）</td></tr>
+  <tr><td>④確認・編集</td><td>人事/広報担当者が確認・修正して公開</td><td>OREC HD</td></tr>
+</table>
+
+<div class="alert-note">
+  <strong>【AI生成の実装方針】</strong>
+  Phase 3では管理画面にインタビュー原稿テキストを入力すると記事HTMLを生成するフォームを設ける（外部LLM API呼び出し）。
+  Phase 3未満の段階では、管理者がHTMLを直接入力して記事を登録する方法でよい。
+</div>
+
+<h4>新規テーブル</h4>
+<pre><code>CREATE TABLE career_articles (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    subject_user_id UUID REFERENCES users(id),     -- 記事の主人公
+    interviewer_user_id UUID REFERENCES users(id), -- インタビュアー
+    title           TEXT NOT NULL,
+    body_html       TEXT NOT NULL,                 -- 記事本文（HTML）
+    thumbnail_url   TEXT,
+    published_at    TIMESTAMPTZ,
+    created_at      TIMESTAMPTZ DEFAULT NOW(),
+    status          TEXT DEFAULT 'draft'           -- draft / published
+);</code></pre>
+
+
+<h3 id="sec2-6">2.6 <span class="badge-new">NEW</span> 座談会コンテンツ</h3>
+
+<h4>概要</h4>
+<p>
+  複数社員が参加する座談会の記録・紹介コンテンツ。月1本程度の発行を想定。
+  テーマはX（Twitter）の公式イベントカレンダー（四半期ごと発行）を参考に、
+  サンカクキカクが候補を提案しORECが決定する形を取る。
+</p>
+
+<h4>仕様</h4>
+<table>
+  <tr><th>項目</th><th>仕様</th></tr>
+  <tr><td>形式</td><td>オンライン・オフライン両方</td></tr>
+  <tr><td>参加者</td><td>複数社員（部署横断が望ましい）</td></tr>
+  <tr><td>テーマ選定</td><td>Xイベントカレンダー（四半期）を参照してサンカクキカクが候補提示 → OREC確定</td></tr>
+  <tr><td>コンテンツ形式</td><td>テキスト記事＋写真。動画は将来対応。</td></tr>
+  <tr><td>発行頻度</td><td>月1本（目標）</td></tr>
+  <tr><td>月額運用費</td><td>テーマ提案・記事制作支援はサンカクキカクの月額運用費に含む</td></tr>
+</table>
+
+<h4>新規テーブル</h4>
+<pre><code>CREATE TABLE roundtable_articles (
+    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title        TEXT NOT NULL,
+    theme        TEXT,                              -- 座談会テーマ
+    body_html    TEXT NOT NULL,
+    thumbnail_url TEXT,
+    participants UUID[],                           -- 参加社員user_id配列
+    held_at      DATE,                             -- 開催日
+    published_at TIMESTAMPTZ,
+    status       TEXT DEFAULT 'draft',
+    created_at   TIMESTAMPTZ DEFAULT NOW()
+);</code></pre>
+
+
+<h3 id="sec2-7">2.7 <span class="badge-new">NEW</span> 部署からのお知らせ</h3>
+
+<h4>概要</h4>
+<p>
+  各部署が発信する「お知らせ」投稿。通常の全社フィード投稿と同じデータ構造を使い、
+  <code>post_type = 'announcement'</code> フラグで区別する。
+  全社フィードにも流れ、かつ当該部署ページにも表示される。
+</p>
+
+<h4>テーブル変更（postsへの追加）</h4>
+<pre><code>-- posts テーブルにカラム追加
+ALTER TABLE posts ADD COLUMN post_type TEXT DEFAULT 'post';
+-- post_type: 'post'（通常投稿）/ 'announcement'（お知らせ）/ 'thanks_card'は別テーブルで管理
+
+-- お知らせ一覧取得例
+SELECT * FROM posts
+WHERE post_type = 'announcement'
+  AND $department_id = ANY(SELECT department_id FROM post_department_tags WHERE post_id = posts.id)
+ORDER BY created_at DESC;</code></pre>
+
+<h4>UI仕様</h4>
+<ul>
+  <li>投稿作成フォームに「投稿種別：通常投稿 / 部署からのお知らせ」の選択UIを追加。</li>
+  <li>お知らせ投稿はフィード内で視覚的に区別（バッジ表示やカード背景色変更など）。</li>
+  <li>部署ページのお知らせタブで一覧表示。</li>
+</ul>
+
+
+<!-- ======================================================= -->
+<h2 id="sec3">3. <span class="badge-new">NEW</span> サイネージモード（製造スタッフ向け）</h2>
+
+<h3>概要</h3>
+<p>
+  製造スタッフはスマートフォンを業務中に使用できず、休憩時間も短い。
+  これを解決するため、休憩スペースのモニター向けに専用のサイネージ表示モードを設計する。
+</p>
+
+<h3>アクセス方法</h3>
+<table>
+  <tr><th>項目</th><th>仕様</th></tr>
+  <tr><td>URL</td><td>通常版と別URL（例: <code>sharonai.orec.jp/signage</code>）で独立した画面として提供</td></tr>
+  <tr><td>認証</td><td>ログイン不要。社内ネットワークのIPアドレス制限のみで制御</td></tr>
+  <tr><td>運用方法</td><td>ブラウザでサイネージURLを開きっぱなしにするだけ（特別なハードウェア不要）</td></tr>
+  <tr><td>モニター管理</td><td><span class="badge-confirm">要確認</span> 各拠点に委ねる想定だが、設置場所・台数を確認する</td></tr>
+</table>
+
+<h3>表示コンテンツ</h3>
+<table>
+  <tr><th>コンテンツ</th><th>更新頻度</th><th>データソース</th></tr>
+  <tr><td>全社フィードの最新投稿</td><td>リアルタイム（ポーリング）</td><td>/api/feed?type=signage</td></tr>
+  <tr><td>今日の記念日・イベント（四半期カレンダー連動）</td><td>毎日</td><td>カレンダーマスタ</td></tr>
+  <tr><td>社員プロフィールのピックアップ（ランダムローテーション）</td><td>定期（数分ごと）</td><td>/api/users/random-profile</td></tr>
+  <tr><td>部署紹介のローテーション</td><td>定期（数分ごと）</td><td>/api/departments/signage</td></tr>
+  <tr><td>サンクスカード獲得ランキング（月次）</td><td>月次更新</td><td>/api/thanks-cards/ranking</td></tr>
+</table>
+
+<h3>実装仕様</h3>
+<ul>
+  <li>サイネージ用エンドポイントはIPアドレス制限ミドルウェアで保護する。</li>
+  <li>フロントエンドはSSR + JavaScriptの定期ポーリング（30〜60秒間隔）で自動更新。</li>
+  <li>ページ全体をコンテンツがローテーションするカルーセル形式で実装する。</li>
+  <li>フォントサイズ・コントラストはモニター表示（遠距離閲覧）に最適化する。</li>
+</ul>
+
+<h3>新規エンドポイント</h3>
+<pre><code>GET /signage                    # サイネージ表示ページ（HTML、認証不要＋IP制限）
+GET /api/signage/feed           # サイネージ用フィードデータ（JSON）
+GET /api/signage/profile/random # ランダム社員プロフィール
+GET /api/signage/department     # 部署紹介ローテーションデータ
+GET /api/signage/calendar       # 今日の記念日・イベント</code></pre>
+
+<h3>カレンダーマスタテーブル</h3>
+<pre><code>CREATE TABLE event_calendar (
+    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_date DATE NOT NULL,
+    title      TEXT NOT NULL,
+    description TEXT,
+    source     TEXT DEFAULT 'internal'   -- 'internal' / 'x_calendar'
+);</code></pre>
+
+<div class="alert-note">
+  <strong>【X（Twitter）イベントカレンダー連携について】</strong>
+  四半期ごとにXが公開するイベントカレンダーを参照し、管理者がカレンダーマスタに手動登録する運用でよい。自動取得APIは将来対応。
+</div>
+
+
+<!-- ======================================================= -->
+<h2 id="sec4">4. <span class="badge-new">NEW</span> 投稿ガイドライン・リテラシー対策</h2>
+
+<h3>ガイドラインの設置</h3>
+<table>
+  <tr><th>設置場所</th><th>仕様</th></tr>
+  <tr><td>投稿フォーム内</td><td>フォーム下部に常時表示（折りたたみ可）</td></tr>
+  <tr><td>初回ログイン時</td><td>ガイドライン全文の確認・同意フローを実装。同意なしには投稿不可</td></tr>
+</table>
+
+<h3>ガイドラインの内容・管理</h3>
+<table>
+  <tr><th>項目</th><th>仕様</th></tr>
+  <tr><td>ガイドライン作成</td><td>サンカクキカクが叩き台を作成 → ORECが確認・追加して確定</td></tr>
+  <tr><td>主な内容</td><td>写真の写り込み防止 / 個人情報の取り扱い / 言葉遣いの注意事項</td></tr>
+  <tr><td>更新・管理</td><td>月額運用費の範囲内でサンカクキカクが継続対応</td></tr>
+  <tr><td>更新時の対応</td><td>ガイドライン更新時は既存ユーザーに再同意を促す通知を送る（<span class="badge-confirm">要確認</span>）</td></tr>
+</table>
+
+<h3>問題投稿への対応フロー</h3>
+<ul>
+  <li>投稿前の自動フィルタリングは実装しない（即時性を優先）。</li>
+  <li>ガイドラインの周知徹底と通報機能（v1.0 Phase 3実装済み）の組み合わせで対処。</li>
+  <li>問題発生後は管理者が通報一覧から非表示・削除処理を行う（v1.0仕様通り）。</li>
+</ul>
+
+<h3>新規テーブル</h3>
+<pre><code>CREATE TABLE posting_guidelines (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    version     TEXT NOT NULL,               -- バージョン番号（例: "1.0"）
+    body_html   TEXT NOT NULL,               -- ガイドライン本文（HTML）
+    published_at TIMESTAMPTZ DEFAULT NOW(),
+    is_current  BOOLEAN DEFAULT TRUE         -- 最新版フラグ
+);
+
+-- ユーザーの同意記録
+CREATE TABLE guideline_consents (
+    user_id         UUID REFERENCES users(id),
+    guideline_id    UUID REFERENCES posting_guidelines(id),
+    consented_at    TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (user_id, guideline_id)
+);</code></pre>
+
+<h3>API追加</h3>
+<pre><code>GET  /api/guidelines/current          # 現在のガイドライン取得
+POST /api/guidelines/consent          # 同意記録
+GET  /api/guidelines/consent/check    # 同意済みチェック（投稿前バリデーション用）</code></pre>
+
+
+<!-- ======================================================= -->
+<h2 id="sec5">5. データ設計追加（ER差分）</h2>
+
+<h3>v1.0 ER図への追加エンティティ一覧</h3>
+<table>
+  <tr><th>テーブル名</th><th>用途</th><th>フェーズ</th></tr>
+  <tr><td>user_profiles</td><td>社員の拡張プロフィール情報</td><td>デモ</td></tr>
+  <tr><td>post_department_tags</td><td>投稿×部署の多対多中間テーブル</td><td>Phase 1</td></tr>
+  <tr><td>thanks_cards</td><td>サンクスカード送付記録</td><td>Phase 2</td></tr>
+  <tr><td>posting_guidelines</td><td>投稿ガイドラインマスタ</td><td>Phase 2</td></tr>
+  <tr><td>guideline_consents</td><td>ユーザーのガイドライン同意記録</td><td>Phase 2</td></tr>
+  <tr><td>career_articles</td><td>キャリアインタビュー記事</td><td>Phase 3</td></tr>
+  <tr><td>roundtable_articles</td><td>座談会コンテンツ記事</td><td>Phase 3</td></tr>
+  <tr><td>event_calendar</td><td>記念日・イベントカレンダー（サイネージ用）</td><td>Phase 3</td></tr>
+</table>
+
+<h3>departments テーブル変更（ALTER TABLE）</h3>
+<pre><code>ALTER TABLE departments ADD COLUMN catchcopy       TEXT;
+ALTER TABLE departments ADD COLUMN description     TEXT;
+ALTER TABLE departments ADD COLUMN cover_image_url TEXT;
+ALTER TABLE departments ADD COLUMN manager_user_id UUID REFERENCES users(id);
+ALTER TABLE departments ADD COLUMN updated_at      TIMESTAMPTZ DEFAULT NOW();</code></pre>
+
+<h3>posts テーブル変更（ALTER TABLE）</h3>
+<pre><code>-- visibility_department_id は廃止（post_department_tags に移行）
+ALTER TABLE posts DROP COLUMN IF EXISTS visibility_department_id;
+
+-- 投稿種別カラム追加
+ALTER TABLE posts ADD COLUMN post_type TEXT NOT NULL DEFAULT 'post';
+-- post_type: 'post' | 'announcement'</code></pre>
+
+
+<!-- ======================================================= -->
+<h2 id="sec6">6. API仕様追加</h2>
+
+<h3>v1.0 OpenAPI仕様への追加エンドポイント</h3>
+<pre><code>paths:
+  # 部署関連
+  /api/departments:
+    get:
+      summary: 部署一覧取得
+  /api/departments/{deptId}:
+    get:
+      summary: 部署ページ情報取得（紹介文・メンバー・フィード）
+    put:
+      summary: 部署情報更新（部署担当者・管理者のみ）
+
+  # プロフィール関連
+  /api/users/{userId}/profile:
+    get:
+      summary: 社員拡張プロフィール取得
+    put:
+      summary: 自分の拡張プロフィール更新
+
+  # フィード（部署タグ対応）
+  /api/feed:
+    get:
+      summary: ホームフィード取得（既存）
+      parameters:
+        - name: department_id
+          in: query
+          description: 部署IDでフィルタ（部署ページ用）
+
+  # 投稿作成（変更）
+  /api/posts:
+    post:
+      summary: 投稿作成（部署タグ複数指定対応・post_type指定追加）
+
+  # サンクスカード
+  /api/thanks-cards:
+    post:
+      summary: サンクスカード送付
+    get:
+      summary: サンクスカード一覧（全社フィード向け）
+  /api/thanks-cards/ranking:
+    get:
+      summary: 月次受取ランキング
+      parameters:
+        - name: year_month
+          in: query
+          description: "対象年月 (例: 2026-05)"
+  /api/users/{userId}/thanks-cards/received:
+    get:
+      summary: 特定ユーザーのサンクスカード受取一覧
+
+  # ガイドライン
+  /api/guidelines/current:
+    get:
+      summary: 現在のガイドライン取得
+  /api/guidelines/consent:
+    post:
+      summary: 同意記録
+  /api/guidelines/consent/check:
+    get:
+      summary: 同意済みチェック
+
+  # キャリアインタビュー記事
+  /api/articles/career:
+    get:
+      summary: キャリアインタビュー記事一覧
+  /api/articles/career/{articleId}:
+    get:
+      summary: 記事詳細
+
+  # 座談会記事
+  /api/articles/roundtable:
+    get:
+      summary: 座談会コンテンツ一覧
+  /api/articles/roundtable/{articleId}:
+    get:
+      summary: 記事詳細
+
+  # サイネージ
+  /signage:
+    get:
+      summary: サイネージ表示ページ（認証不要・IP制限）
+  /api/signage/feed:
+    get:
+      summary: サイネージ用フィード（最新投稿・サンクスカード）
+  /api/signage/profile/random:
+    get:
+      summary: ランダム社員プロフィール
+  /api/signage/department:
+    get:
+      summary: 部署紹介ローテーションデータ
+  /api/signage/calendar:
+    get:
+      summary: 今日の記念日・イベント</code></pre>
+
+
+<!-- ======================================================= -->
+<h2 id="sec7">7. 画面ワイヤー追加</h2>
+
+<h3>部署ページ</h3>
+<div class="wireframe">
+┌──────────────────────────────────────┐
+│ ← 戻る          製造部               │
+├──────────────────────────────────────┤
+│  [カバー画像エリア]                   │
+│  製造部                              │
+│  「品質と誇りをつくる現場」           │
+├──────────────────────────────────────┤
+│ [メンバー] [フィード] [お知らせ]      │
+├──────────────────────────────────────┤
+│ メンバー一覧（タブ選択時）            │
+│ 👤山田  👤田中  👤鈴木  👤佐藤  …   │
+├──────────────────────────────────────┤
+│ フィード（タブ選択時）                │
+│ ─────────────────────────────────   │
+│ 👤山田 太郎  #製造部 #品質管理  3時間前│
+│ 今月の生産目標を達成しました！        │
+│ ♥8  💬2                             │
+└──────────────────────────────────────┘
+</div>
+
+<h3>社員プロフィールページ（拡張）</h3>
+<div class="wireframe">
+┌──────────────────────────────────────┐
+│ ← 戻る          プロフィール         │
+├──────────────────────────────────────┤
+│  [社内報用プロフィール写真]           │
+│  山田 太郎                           │
+│  製造部 / 2020年入社                 │
+│  「ものづくりに情熱を注いでいます」   │
+├──────────────────────────────────────┤
+│ 趣味・関心                           │
+│  釣り / 登山 / ガジェット            │
+│ 得意なこと                           │
+│  精密加工 / 品質管理 / 後輩指導      │
+│ キャリア経歴（任意）                 │
+│  ○○製作所→OREC HD...               │
+├──────────────────────────────────────┤
+│ もらったサンクスカード (今月: 3枚)   │
+│  👤田中→「いつも丁寧な仕事をありが…」│
+├──────────────────────────────────────┤
+│ この人の投稿                         │
+│  [フィード...]                       │
+└──────────────────────────────────────┘
+</div>
+
+<h3>サンクスカード送付フォーム</h3>
+<div class="wireframe">
+┌──────────────────────────────────────┐
+│ ← 戻る       サンクスカードを送る    │
+├──────────────────────────────────────┤
+│ 送る相手                             │
+│ [社員を検索...]          👤田中 健   │
+├──────────────────────────────────────┤
+│ メッセージ（必須）                   │
+│ ┌──────────────────────────────────┐ │
+│ │ 先週のトラブル対応、本当に助かり  │ │
+│ │ ました。ありがとうございます。    │ │
+│ └──────────────────────────────────┘ │
+│ ※今月の残り送付枚数: 3枚            │
+├──────────────────────────────────────┤
+│              [送る]                  │
+└──────────────────────────────────────┘
+</div>
+
+<h3>初回ログイン時ガイドライン同意フロー</h3>
+<div class="wireframe">
+┌──────────────────────────────────────┐
+│       投稿ガイドラインの確認         │
+├──────────────────────────────────────┤
+│ 社内報を安心して使うために、         │
+│ 以下のガイドラインをご確認ください。 │
+│                                      │
+│ 1. 他者の写真・個人情報の取り扱い   │
+│ 2. 言葉遣いのマナー                 │
+│ 3. 不適切投稿の通報方法             │
+│  ：                                  │
+│ [▼ 全文を読む]                      │
+├──────────────────────────────────────┤
+│ [✓] ガイドラインを読み、同意します  │
+│                                      │
+│        [同意して始める]              │
+└──────────────────────────────────────┘
+</div>
+
+<h3>サイネージ表示画面</h3>
+<div class="wireframe">
+┌────────────────────────────────────────────────┐
+│  OREC HD 社内報          [今日: 5月5日 こどもの日]│
+├────────────────────────────────────────────────┤
+│                                                │
+│  📢 最新投稿                                   │
+│  ┌──────────────────────────────────────────┐  │
+│  │ 👤 田中 健 (製造部)    2時間前           │  │
+│  │ 今月の生産目標120%達成！チーム全員に感謝  │  │
+│  │ ♥ 24                                     │  │
+│  └──────────────────────────────────────────┘  │
+│                                                │
+│  🏅 今月のサンクスカードランキング             │
+│  1位 山田 太郎 (製造部)       12枚            │
+│  2位 鈴木 花子 (営業部)        9枚            │
+│  3位 佐藤 次郎 (品質管理部)    7枚            │
+│                                                │
+│           ← 自動ローテーション →              │
+└────────────────────────────────────────────────┘
+</div>
+
+
+<!-- ======================================================= -->
+<h2 id="sec8">8. 実装フェーズ計画（更新版）</h2>
+
+<div class="alert-change">
+  <strong>【v1.0フェーズ計画からの変更】</strong>
+  v1.0の Phase 0〜4は受注前提の汎用計画だった。今回、OREC HD向けのデモ実施→受注→MVP→将来拡張というロードマップに合わせて再構成する。
+</div>
+
+<table>
+  <tr>
+    <th style="width:12%">フェーズ</th>
+    <th style="width:18%">時期目安</th>
+    <th>目的・成果物</th>
+    <th style="width:25%">主な実装内容</th>
+  </tr>
+  <tr class="phase-demo">
+    <td><strong>デモ</strong></td>
+    <td>受注前（次回MTGまで）</td>
+    <td>クライアントへの提案・受注獲得。部署紹介と社員プロフィールの最小デモを実装する。</td>
+    <td>部署ページ（静的データ）、社員プロフィール（拡張フィールド表示）、基本フィード表示、WOFF起動確認</td>
+  </tr>
+  <tr class="phase-mvp">
+    <td><strong>Phase 1</strong><br>（MVP）</td>
+    <td>受注後 3〜4週</td>
+    <td>最小要件（部署紹介＋社員プロフィール）の本番実装。オフィス勤務メンバーで先行運用開始。</td>
+    <td>認証基盤（WOFF/OIDC）、全社フィード（複数部署タグ）、投稿・いいね・コメント、部署ページ（入力UI）、プロフィール入力UI</td>
+  </tr>
+  <tr class="phase-mvp">
+    <td><strong>Phase 2</strong></td>
+    <td>Phase 1完了後 3〜4週</td>
+    <td>エンゲージメント強化と管理基盤の整備。</td>
+    <td>サンクスカード機能、投稿ガイドライン・初回同意フロー、部署からのお知らせ、通報・管理画面、製造スタッフへの展開開始</td>
+  </tr>
+  <tr>
+    <td><strong>Phase 3</strong></td>
+    <td>Phase 2完了後 4〜6週</td>
+    <td>コンテンツの充実とリーチ拡大。</td>
+    <td>サイネージモード（別URL・IP制限）、キャリアインタビュー記事管理、座談会コンテンツ管理、イベントカレンダー管理</td>
+  </tr>
+  <tr>
+    <td><strong>Phase 4</strong></td>
+    <td>Phase 3完了後</td>
+    <td>効果測定・安定化・継続改善。</td>
+    <td>効果測定ダッシュボード（投稿数・エンゲージメント率・プロフィール入力率等）、負荷テスト、AI記事生成機能強化</td>
+  </tr>
+</table>
+
+<div class="alert-note">
+  <strong>【デモ実装の優先範囲】</strong>
+  デモで実装するのは「部署紹介」「社員プロフィール」の2コンテンツのみ。
+  サンクスカード・キャリアインタビュー・サイネージモードはデモ段階では不要。
+  ただし、これらの機能はサービス設計に含まれており、Phase 2〜3で実装予定であることをデモ時に説明する。
+</div>
+
+
+<!-- ======================================================= -->
+<h2 id="sec9">9. 実装指示プロンプト追加</h2>
+
+<h3>9.1 デモ実装用プロンプト（部署紹介・社員プロフィール）</h3>
+<pre><code>あなたはGoバックエンドエンジニアです。
+OREC HD Web社内報のデモ実装として、部署紹介ページと社員プロフィールページを実装してください。
+
+【目的】
+受注前のデモ用途のため、最小限かつ見栄えのよい実装を優先する。
+静的データの手動投入でよく、入力UIはなくてよい。
+
+【実装対象】
+1. departments テーブルへの追加カラム（catchcopy, description, cover_image_url, manager_user_id）マイグレーション
+2. user_profiles テーブル作成マイグレーション
+3. GET /api/departments/{deptId} ハンドラ（部署情報＋メンバー一覧＋直近フィード）
+4. GET /api/users/{userId}/profile ハンドラ
+5. 部署ページHTMLテンプレート（タブ: メンバー/フィード/お知らせ）
+6. 社員プロフィールページHTMLテンプレート
+7. デモ用シードデータSQL（2〜3部署、5〜10名分のuser_profiles）
+
+【前提】
+- 既存のレイヤードアーキテクチャを踏襲すること
+- SSR + HTMXのUI方針を維持すること
+- 認証はv1.0実装済みのWOFF/OIDCセッションを利用
+
+【完了条件】
+- /departments/{deptId} でデモ用部署ページが表示される
+- /users/{userId}/profile で社員プロフィールページが表示される
+- デモデータが投入済みで、すぐ動かして見せられる状態
+
+【期待出力】
+- 変更・追加ファイル一覧
+- デモデータのSQL
+- デモ時の動作確認手順
+</code></pre>
+
+<h3>9.2 サンクスカード実装用プロンプト（Phase 2）</h3>
+<pre><code>あなたはGoバックエンドエンジニアです。
+OREC HD Web社内報のPhase 2として、サンクスカード（ピアボーナス）機能を実装してください。
+
+【目的】
+社員が社員へ感謝を送る機能を実装し、月次ランキングをサイネージで表示できるようにする。
+
+【実装対象】
+1. thanks_cards テーブル作成マイグレーション
+2. POST /api/thanks-cards（送付・月次上限チェック）
+3. GET /api/thanks-cards（全社フィード向け一覧）
+4. GET /api/thanks-cards/ranking（月次受取ランキング）
+5. GET /api/users/{userId}/thanks-cards/received
+6. 全社フィードへのサンクスカード表示統合
+7. プロフィールページへの受取カード表示
+8. サンクスカード送付フォームHTMLテンプレート
+
+【制約】
+- 月次送付上限の具体的な枚数は環境変数またはシステム設定で変更可能にする
+- 自分自身へは送付不可（DBレベルのCHECK制約で保証）
+- ランキングAPIはサイネージ用途でも使用するため、認証なし（IP制限は呼び出し元で制御）
+
+【完了条件】
+- サンクスカードが送付・保存される
+- 月次上限を超えると送付エラーになる
+- 月次ランキングAPIが動作する
+
+【期待出力】
+- 変更・追加ファイル一覧
+- 上限チェックのロジック説明
+- テスト観点
+</code></pre>
+
+<h3>9.3 サイネージモード実装用プロンプト（Phase 3）</h3>
+<pre><code>あなたはGoバックエンドエンジニアです。
+OREC HD Web社内報のPhase 3として、製造スタッフ向けサイネージモードを実装してください。
+
+【目的】
+休憩スペースのモニターで社内報コンテンツを自動表示する。ログイン不要・IPアドレス制限のみで制御する。
+
+【実装対象】
+1. event_calendar テーブル作成マイグレーション
+2. IPアドレス制限ミドルウェア（サイネージエンドポイント専用）
+3. GET /signage（サイネージ表示ページHTML）
+4. GET /api/signage/feed（最新投稿＋サンクスカード）
+5. GET /api/signage/profile/random（ランダム社員プロフィール）
+6. GET /api/signage/department（部署紹介ローテーション）
+7. GET /api/signage/calendar（今日の記念日・イベント）
+8. サイネージ用HTMLテンプレート（大画面モニター向け、フォントサイズ・コントラスト最適化）
+9. 管理画面からのイベントカレンダー登録UI
+
+【前提】
+- サイネージURLは通常版と分離する（例: /signage）
+- フロントエンドは30〜60秒のポーリングで自動更新
+- 特別なハードウェア不要・ブラウザで常時開きっぱなしにするだけで動作
+
+【完了条件】
+- /signage にIPアドレス制限が機能している
+- 許可IPからアクセスするとサイネージ画面が表示される
+- コンテンツが一定間隔で自動更新される
+
+【期待出力】
+- 変更・追加ファイル一覧
+- IPアドレス制限の設定方法
+- 許可IPリストの管理方法
+</code></pre>
+
+<div class="alert-note">
+  <strong>【本書の管理方針】</strong>
+  本書（v1.1）はv1.0仕様書と併せて読むこと。
+  今後の設計変更・確認事項が解決した際は、v1.2として本書を更新する。
+  <span class="badge-confirm">要確認</span> 項目が解決したタイミングで開発担当（TBA）へ個別に連絡する。
+</div>
+
+<hr style="margin-top:3em;border:none;border-top:1px solid #ccc;">
+<p style="text-align:center;color:#888;font-size:9pt;">OREC HD Web社内報 仕様差分書 v1.1 ― サンカクキカク 2026</p>
+
+</body>
+</html>

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { Heart, User } from 'lucide-react'
+import { Heart, User, MessageSquare, Trash2, Send } from 'lucide-react'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
@@ -16,6 +16,10 @@ function FeedPage() {
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [activeTab, setActiveTab] = useState('all') // 'all' or 'related'
+  const [expandedComments, setExpandedComments] = useState(new Set())
+  const [comments, setComments] = useState({})
+  const [commentInputs, setCommentInputs] = useState({})
+  const [commentLoading, setCommentLoading] = useState({})
 
   useEffect(() => {
     fetchFeed()
@@ -63,6 +67,85 @@ function FeedPage() {
       }
     } catch (err) {
       console.error('Failed to toggle like:', err)
+    }
+  }
+
+  const toggleComments = async (postId) => {
+    const newExpanded = new Set(expandedComments)
+    if (newExpanded.has(postId)) {
+      newExpanded.delete(postId)
+    } else {
+      newExpanded.add(postId)
+      if (!comments[postId]) {
+        await fetchComments(postId)
+      }
+    }
+    setExpandedComments(newExpanded)
+  }
+
+  const fetchComments = async (postId) => {
+    try {
+      const res = await fetch(`${API_URL}/posts/${postId}/comments`, {
+        headers: getAuthHeaders()
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setComments(prev => ({ ...prev, [postId]: data }))
+      }
+    } catch (err) {
+      console.error('Failed to fetch comments:', err)
+    }
+  }
+
+  const handleCommentSubmit = async (postId) => {
+    const body = commentInputs[postId]?.trim()
+    if (!body) return
+
+    setCommentLoading(prev => ({ ...prev, [postId]: true }))
+    try {
+      const res = await fetch(`${API_URL}/posts/${postId}/comments`, {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ body })
+      })
+      if (res.ok) {
+        setCommentInputs(prev => ({ ...prev, [postId]: '' }))
+        await fetchComments(postId)
+        // Update comment count
+        setPosts(prev => prev.map(post => {
+          if (post.id === postId) {
+            return { ...post, comment_count: (post.comment_count || 0) + 1 }
+          }
+          return post
+        }))
+      }
+    } catch (err) {
+      console.error('Failed to create comment:', err)
+    } finally {
+      setCommentLoading(prev => ({ ...prev, [postId]: false }))
+    }
+  }
+
+  const handleDeleteComment = async (postId, commentId) => {
+    try {
+      const res = await fetch(`${API_URL}/posts/${postId}/comments/${commentId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      })
+      if (res.ok) {
+        await fetchComments(postId)
+        setPosts(prev => prev.map(post => {
+          if (post.id === postId) {
+            return { ...post, comment_count: Math.max(0, (post.comment_count || 0) - 1) }
+          }
+          return post
+        }))
+      }
+    } catch (err) {
+      console.error('Failed to delete comment:', err)
     }
   }
 
@@ -193,7 +276,78 @@ function FeedPage() {
                         <Heart className={`h-4 w-4 ${post.is_liked ? 'fill-current' : ''}`} />
                         <span className="text-xs">{post.like_count || 0}</span>
                       </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={`gap-1 ${expandedComments.has(post.id) ? 'text-primary' : 'text-muted-foreground'}`}
+                        onClick={() => toggleComments(post.id)}
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                        <span className="text-xs">{post.comment_count || 0}</span>
+                      </Button>
                     </div>
+
+                    {/* コメントセクション */}
+                    {expandedComments.has(post.id) && (
+                      <div className="mt-4 pt-4 border-t border-border">
+                        {/* コメント入力 */}
+                        <div className="flex gap-2 mb-4">
+                          <input
+                            type="text"
+                            value={commentInputs[post.id] || ''}
+                            onChange={(e) => setCommentInputs(prev => ({ ...prev, [post.id]: e.target.value }))}
+                            onKeyDown={(e) => e.key === 'Enter' && handleCommentSubmit(post.id)}
+                            placeholder="コメントを入力..."
+                            className="flex-1 px-3 py-2 text-sm border rounded-md bg-background"
+                            disabled={commentLoading[post.id]}
+                          />
+                          <Button
+                            size="sm"
+                            disabled={!commentInputs[post.id]?.trim() || commentLoading[post.id]}
+                            onClick={() => handleCommentSubmit(post.id)}
+                          >
+                            <Send className="h-3 w-3" />
+                          </Button>
+                        </div>
+
+                        {/* コメント一覧 */}
+                        <div className="space-y-3">
+                          {(comments[post.id] || []).map(comment => (
+                            <div key={comment.id} className="flex items-start gap-2">
+                              <Avatar className="h-6 w-6 flex-shrink-0">
+                                <AvatarFallback className="text-xs">
+                                  {comment.author_name?.charAt(0) || 'U'}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-medium">{comment.author_name}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {formatTimeAgo(comment.created_at)}
+                                  </span>
+                                  {user?.id === comment.author_id && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-auto py-0 px-1 text-muted-foreground hover:text-destructive"
+                                      onClick={() => handleDeleteComment(post.id, comment.id)}
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  )}
+                                </div>
+                                <p className="text-sm text-foreground">{comment.body}</p>
+                              </div>
+                            </div>
+                          ))}
+                          {(comments[post.id]?.length === 0) && (
+                            <p className="text-sm text-muted-foreground text-center py-2">
+                              まだコメントがありません
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )
                   </div>
                 </div>
               </CardContent>

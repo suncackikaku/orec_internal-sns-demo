@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="light" style=""><head><meta charset="utf-8">
+    
+    
+    <title>LINE WORKS連携 社内SNSシステム 仕様書（Go/WOFF/OIDC対応）</title>
+    
+    <style>
+      body {
+        max-width: 880px;
+        margin: 0 auto;
+        padding: 32px 80px;
+        position: relative;
+        box-sizing: border-box;
+        font-family: 'Times New Roman', 'YuMincho', 'Hiragino Mincho ProN', 'Yu Mincho', 'MS PMincho', serif;
+        color: #000;
+        line-height: 1.6;
+        background-color: #fff;
+      }
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6 {
+        font-family: 'Arial', 'YuGothic', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'MS PGothic', sans-serif;
+        color: #000;
+        margin-top: 1.5em;
+        margin-bottom: 0.5em;
+      }
+      h1 {
+        font-size: 24pt;
+        text-align: center;
+        border-bottom: 2px solid #000;
+        padding-bottom: 10px;
+        margin-bottom: 40px;
+      }
+      h2 {
+        font-size: 16pt;
+        border-bottom: 1px solid #000;
+        padding-bottom: 5px;
+      }
+      h3 {
+        font-size: 14pt;
+      }
+      h4 {
+        font-size: 12pt;
+      }
+      p,
+      li,
+      td,
+      th {
+        font-size: 11pt;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 1.5em;
+      }
+      th,
+      td {
+        border: 1px solid #000;
+        padding: 8px;
+        text-align: left;
+      }
+      th {
+        background-color: #f2f2f2;
+        font-weight: bold;
+      }
+      pre {
+        background-color: #f9f9f9;
+        border: 1px solid #ccc;
+        padding: 10px;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 10pt;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+      .alert-box {
+        border: 1px solid #000;
+        padding: 10px 15px;
+        margin: 15px 0;
+        background-color: #fdfdfd;
+      }
+      .alert-box strong {
+        display: block;
+        margin-bottom: 5px;
+        font-family: 'Arial', sans-serif;
+      }
+      .toc {
+        margin-bottom: 40px;
+        page-break-after: always;
+      }
+      .toc ul {
+        list-style-type: none;
+        padding-left: 20px;
+      }
+      .toc > ul {
+        padding-left: 0;
+      }
+      .toc li {
+        margin-bottom: 5px;
+      }
+      .toc a {
+        text-decoration: none;
+        color: #000;
+      }
+    </style>
+  </head>
+  <body style="">
+    <h1>LINE WORKS連携 社内SNSシステム 仕様書<br>（Go/WOFF/OIDC対応）</h1>
+
+    <div class="toc">
+      <h2>目次</h2>
+      <ul>
+        <li><a href="#sec1">1. 文書情報</a></li>
+        <li><a href="#sec2">2. 背景と目的</a></li>
+        <li><a href="#sec3">3. システムコンセプト</a></li>
+        <li><a href="#sec4">4. 対象業務と利用シナリオ</a></li>
+        <li><a href="#sec5">5. 要件定義</a></li>
+        <li><a href="#sec6">6. アーキテクチャ設計</a></li>
+        <li><a href="#sec7">7. 認証・認可方針</a></li>
+        <li><a href="#sec8">8. データ設計</a></li>
+        <li><a href="#sec9">9. シーケンス図</a></li>
+        <li><a href="#sec10">10. API仕様（OpenAPI風）</a></li>
+        <li><a href="#sec11">11. Goプロジェクト構成</a></li>
+        <li><a href="#sec12">12. 画面ワイヤー</a></li>
+        <li><a href="#sec13">13. 非機能要件</a></li>
+        <li><a href="#sec14">14. 実装フェーズ計画</a></li>
+        <li><a href="#sec15">15. リスク・留意点</a></li>
+        <li><a href="#sec16">16. 実装指示プロンプト集</a></li>
+        <li><a href="#sec17">17. 付録</a></li>
+      </ul>
+    </div>
+
+    <h2 id="sec1">1. 文書情報</h2>
+    <table>
+      <tbody><tr>
+        <th>文書名</th>
+        <td>LINE WORKS連携 社内SNSシステム 仕様書（Go/WOFF/OIDC対応）</td>
+      </tr>
+      <tr>
+        <th>版数</th>
+        <td>1.0</td>
+      </tr>
+      <tr>
+        <th>作成日</th>
+        <td>2026-05-01</td>
+      </tr>
+      <tr>
+        <th>想定読者</th>
+        <td>プロダクトオーナー、PM、設計者、Goバックエンド開発者、実装担当者（AIコーディングエージェント利用者）</td>
+      </tr>
+      <tr>
+        <th>目的</th>
+        <td>
+          LINE WORKSと連携した社内SNSシステムの要件、アーキテクチャ、設計方針を定義し、開発および実装の指針とする。
+        </td>
+      </tr>
+      <tr>
+        <th>スコープ</th>
+        <td>MVP（Minimum Viable Product）および初期運用フェーズを対象としたシステム全体設計。</td>
+      </tr>
+    </tbody></table>
+
+    <h2 id="sec2">2. 背景と目的</h2>
+    <p>
+      日常の業務導線としてLINE
+      WORKSを活用しつつ、InstagramやXのような「投稿」「タイムライン」「いいね」「コメント」を持つ社内限定SNSを構築する。チャットツール特有の情報流出を防ぎ、ナレッジの蓄積・拡散・可視化を実現することを目的とする。機能重複を避け、軽量かつ保守性の高いシステムを目指す。
+    </p>
+
+    <h2 id="sec3">3. システムコンセプト</h2>
+    <ul>
+      <li><strong>シームレスな体験：</strong>LINE WORKS内のミニアプリ（WOFF）として動作し、ログインの手間を省く。</li>
+      <li><strong>情報のストックと拡散：</strong>タイムライン形式での全社・部署ごとの情報共有。</li>
+      <li>
+        <strong>軽量・コンパクト：</strong>Go言語による単一バイナリ（モノリス）構成とSSR（Server Side Rendering）+
+        HTMXによる軽量フロントエンド。
+      </li>
+      <li><strong>適度な通知：</strong>Incoming Webhookを用いた重要な投稿のみの通知連携。</li>
+    </ul>
+
+    <h2 id="sec4">4. 対象業務と利用シナリオ</h2>
+    <ul>
+      <li>
+        <strong>シナリオA（日常的な発信）：</strong>営業担当者が外出先からLINE
+        WORKSを開き、WOFFアプリ経由で商談メモや写真を社内SNSに投稿する。
+      </li>
+      <li>
+        <strong>シナリオB（情報収集）：</strong>社員が移動中にタイムラインを閲覧し、他部署の投稿に「いいね」やコメントを残す。
+      </li>
+      <li>
+        <strong>シナリオC（管理者業務）：</strong>管理者がPCブラウザからOIDC経由で管理画面にログインし、通報された不適切投稿の確認・非表示処理を行う。
+      </li>
+    </ul>
+
+    <h2 id="sec5">5. 要件定義</h2>
+
+    <h3>5.1 業務要件</h3>
+    <ul>
+      <li>社員がLINE WORKSから社内SNSへシームレスにアクセスできること。</li>
+      <li>部署横断で情報発信・ナレッジ共有ができること。</li>
+      <li>炎上や不適切投稿を抑止する管理・通報機能が存在すること。</li>
+    </ul>
+
+    <h3>5.2 機能要件</h3>
+    <ul>
+      <li><strong>投稿・閲覧：</strong>テキスト（最大4000字）、複数画像添付、ハッシュタグ機能。</li>
+      <li><strong>エンゲージメント：</strong>いいね（1ユーザー1回）、コメント（1階層スレッド）、メンション機能。</li>
+      <li>
+        <strong>公開範囲制御：</strong>全社（company）、部署限定（department）、指定グループ（group）、自分のみ（private）。
+      </li>
+      <li><strong>アカウント連携：</strong>LINE WORKSユーザー情報・所属情報の自動同期（User API）。</li>
+    </ul>
+
+    <h3>5.3 画面要件</h3>
+    <p>
+      モバイル中心の業務向けUI（詳細は12章「画面ワイヤー」を参照）。ホームフィード、投稿作成、投稿詳細、通知一覧、プロフィール、管理画面。
+    </p>
+
+    <h3>5.4 権限要件</h3>
+    <ul>
+      <li><strong>一般ユーザー：</strong>自身の投稿作成・編集・削除、閲覧許可された投稿の閲覧・アクション。</li>
+      <li><strong>管理者（admin/moderator）：</strong>全投稿の閲覧、不適切投稿の削除、ユーザーの利用停止。</li>
+    </ul>
+
+    <h3>5.5 通知要件</h3>
+    <p>
+      アプリ内通知（メンション、コメント）およびLINE WORKSトークルームへのIncoming
+      Webhook通知（新規重要投稿、運用通知等）。
+    </p>
+
+    <h2 id="sec6">6. アーキテクチャ設計</h2>
+
+    <h3>6.1 全体構成</h3>
+    <p>
+      フロントエンドはSSR + HTMX +
+      Alpine.jsとし、バックエンドはGo言語によるモノリス構成。バッチ・非同期処理用にAPIサーバーとWorkerプロセスを分離してデプロイ可能な設計とする。
+    </p>
+
+    <h3>6.2 採用技術スタック</h3>
+    <ul>
+      <li><strong>バックエンド：</strong>Go (chi/Echo)</li>
+      <li><strong>フロントエンド：</strong>HTML Template (SSR), HTMX, Alpine.js, Pico CSS</li>
+      <li><strong>データベース：</strong>PostgreSQL (全文検索機能利用)</li>
+      <li><strong>ストレージ：</strong>S3互換オブジェクトストレージ (MinIO等)</li>
+      <li><strong>インフラ/コンテナ：</strong>Docker Compose (初期運用想定)</li>
+    </ul>
+
+    <div class="alert-box">
+      <strong>【推奨】軽量化方針</strong>
+      初期フェーズではRedis等の外部キャッシュストアを導入せず、PostgreSQLでの処理に寄せる。フロントエンドも大規模SPAフレームワークを避け、WebView環境（WOFF）で初期表示が高速なSSRを採用する。
+    </div>
+
+    <h2 id="sec7">7. 認証・認可方針</h2>
+
+    <h3>7.1 WOFF起動時の考え方</h3>
+    <p>
+      LINE WORKSアプリ内からのアクセスは、WOFF
+      SDKを通じて取得したコンテキスト情報を用いて内部用セッションCookieを発行し、以降はCookieベースで認証を行う。
+    </p>
+
+    <h3>7.2 OIDCログイン方針</h3>
+    <p>
+      PCブラウザや管理画面への直接アクセス時は、LINE WORKSのOIDC (Authorization Code Flow + PKCE)
+      を用いて認証し、内部セッションを発行する。
+    </p>
+
+    <h3>7.3 ユーザー同期方針</h3>
+    <p>
+      初回ログイン時および定期Workerジョブにより、LINE WORKSのUser
+      APIを呼び出し、ユーザープロフィール（表示名、アイコン）および所属部署（department）を内部データベースに同期（Upsert）する。
+    </p>
+
+    <h2 id="sec8">8. データ設計</h2>
+
+    <h3>8.1 エンティティ概要</h3>
+    <p>
+      主にユーザー(users)、部署(departments)、投稿(posts)、コメント(comments)、通知(notifications)を中心に構成する。
+    </p>
+
+    <h3>8.2 ER図（Mermaid）</h3>
+    <pre><code>erDiagram
+    USERS {
+        uuid id PK
+        string lineworks_user_id UK
+        string email UK
+        string display_name
+        string icon_url
+        uuid primary_department_id FK
+        string status
+        boolean is_admin
+        datetime created_at
+    }
+    DEPARTMENTS {
+        uuid id PK
+        string external_id UK
+        string name
+    }
+    POSTS {
+        uuid id PK
+        uuid author_id FK
+        text body
+        string visibility_type
+        uuid visibility_department_id FK
+        string status
+        integer like_count
+        datetime created_at
+    }
+    COMMENTS {
+        uuid id PK
+        uuid post_id FK
+        uuid author_id FK
+        text body
+        datetime created_at
+    }
+    REACTIONS {
+        uuid id PK
+        uuid post_id FK
+        uuid user_id FK
+        string reaction_type
+    }
+    NOTIFICATIONS {
+        uuid id PK
+        uuid user_id FK
+        string type
+        string status
+        datetime created_at
+    }
+    
+    USERS ||--o{ POSTS : authors
+    USERS ||--o{ COMMENTS : writes
+    DEPARTMENTS ||--o{ USERS : belongs_to
+    POSTS ||--o{ COMMENTS : has
+    POSTS ||--o{ REACTIONS : receives
+</code></pre>
+
+    <h2 id="sec9">9. シーケンス図</h2>
+
+    <h3>9.1 WOFF起動からアプリセッション確立</h3>
+    <pre><code>sequenceDiagram
+    actor User as ユーザー
+    participant LW as LINE WORKS Client
+    participant WOFF as WOFF App
+    participant Go as Go Backend (API)
+    participant API as LINE WORKS API
+    participant DB as PostgreSQL
+
+    User-&gt;&gt;LW: ミニアプリ起動
+    LW-&gt;&gt;WOFF: WOFF URL表示
+    WOFF-&gt;&gt;WOFF: woff.init()
+    WOFF-&gt;&gt;Go: POST /internal/auth/woff/bootstrap (トークン送信)
+    Go-&gt;&gt;API: トークン検証・ユーザー情報取得
+    API--&gt;&gt;Go: userId, profile
+    Go-&gt;&gt;DB: ユーザーUpsert
+    Go--&gt;&gt;WOFF: セッションCookie発行
+    WOFF--&gt;&gt;User: ホームフィード表示
+</code></pre>
+
+    <h2 id="sec10">10. API仕様（OpenAPI風）</h2>
+    <pre><code>openapi: 3.1.0
+info:
+  title: LINE WORKS Internal SNS API
+  version: 1.0.0
+paths:
+  /internal/auth/woff/bootstrap:
+    post:
+      summary: WOFFからのセッション確立
+  /auth/oidc/login:
+    get:
+      summary: OIDCログイン開始（リダイレクト）
+  /api/feed:
+    get:
+      summary: ホームフィード取得
+  /api/posts:
+    post:
+      summary: 投稿作成
+  /api/posts/{postId}/comments:
+    post:
+      summary: コメント追加
+  /api/posts/{postId}/reactions:
+    post:
+      summary: いいね追加
+  /internal/notify/lineworks/post:
+    post:
+      summary: Incoming Webhook経由での通知キューイング
+</code></pre>
+
+    <h2 id="sec11">11. Goプロジェクト構成</h2>
+    <p>APIサーバーと非同期Workerを分割し、ドメイン駆動設計を意識したレイヤードアーキテクチャを採用する。</p>
+    <pre><code>internal-sns/
+├─ cmd/
+│  ├─ api/main.go          # HTTP APIサーバーエントリポイント
+│  └─ worker/main.go       # 非同期ジョブ(Webhook送信等)エントリポイント
+├─ internal/
+│  ├─ domain/              # エンティティ、リポジトリインターフェース
+│  ├─ usecase/             # ビジネスロジック
+│  ├─ handler/             # HTTPハンドラ(chi/Echo)、HTMXビュー返却
+│  ├─ repository/          # PostgreSQL実装、S3実装
+│  ├─ integration/         # LINE WORKS(WOFF, OIDC, UserAPI, Webhook)連携
+│  ├─ worker/              # ジョブディスパッチャ
+│  └─ template/            # HTMLテンプレート (SSR用)
+├─ migrations/             # DBマイグレーションSQL
+├─ go.mod
+└─ Makefile
+</code></pre>
+
+    <h2 id="sec12">12. 画面ワイヤー</h2>
+
+    <h3>ホームフィード</h3>
+    <pre><code>
+┌──────────────────────────────────────┐
+│ [社内SNS]              [🔔3] [👤]    │
+├──────────────────────────────────────┤
+│ [全社] [営業] [開発] [人事] [#タグ]  │
+├──────────────────────────────────────┤
+│ いまどうしてる？                     │
+│ [＋写真] [公開範囲▼] [投稿する]      │
+├──────────────────────────────────────┤
+│ 👤 山田 太郎         営業部      2分前│
+│ 新商品の説明会を開催しました！       │
+│ #営業 #イベント                      │
+│ [画像サムネイル1][画像2]             │
+│ ♥ 12   💬 3   🔖   ↗共有             │
+└──────────────────────────────────────┘
+</code></pre>
+
+    <h3>投稿作成</h3>
+    <pre><code>
+┌──────────────────────────────────────┐
+│ ← 戻る              新規投稿         │
+├──────────────────────────────────────┤
+│ 本文                                 │
+│ ┌──────────────────────────────────┐ │
+│ │ 今日の展示会レポートです。       │ │
+│ └──────────────────────────────────┘ │
+├──────────────────────────────────────┤
+│ 公開範囲: (●) 全社  ( ) 部署限定     │
+│ [✓] LINE WORKS トークへ通知          │
+├──────────────────────────────────────┤
+│ [下書き保存]           [投稿する]    │
+└──────────────────────────────────────┘
+</code></pre>
+
+    <h2 id="sec13">13. 非機能要件</h2>
+    <ul>
+      <li><strong>性能：</strong>1画面の初期ロードは2秒以内。</li>
+      <li><strong>可用性：</strong>平日業務時間帯（9:00〜19:00）の安定稼働を優先。</li>
+      <li>
+        <strong>セキュリティ：</strong>全通信HTTPS。セッションCookieはHttpOnly/Secure属性付与。WOFF Endpoint
+        URL情報のログ出力禁止。
+      </li>
+      <li><strong>監査：</strong>投稿削除、権限変更、管理者アクションは監査ログ(audit_logs)に保存。</li>
+    </ul>
+
+    <h2 id="sec14">14. 実装フェーズ計画</h2>
+    <table>
+      <tbody><tr>
+        <th>Phase</th>
+        <th>期間目安</th>
+        <th>目的と成果物</th>
+      </tr>
+      <tr>
+        <td>Phase 0</td>
+        <td>1〜2週</td>
+        <td>WOFF起動、OIDC連携、セッション確立、DB基盤のPoC</td>
+      </tr>
+      <tr>
+        <td>Phase 1</td>
+        <td>3〜4週</td>
+        <td>テキスト/画像投稿、フィード表示、いいね機能（コア機能）</td>
+      </tr>
+      <tr>
+        <td>Phase 2</td>
+        <td>2〜3週</td>
+        <td>コメント機能、公開範囲制御、Incoming Webhook通知連携</td>
+      </tr>
+      <tr>
+        <td>Phase 3</td>
+        <td>2週</td>
+        <td>通報機能、管理者画面、監査ログ実装</td>
+      </tr>
+      <tr>
+        <td>Phase 4</td>
+        <td>1〜2週</td>
+        <td>負荷テスト、ログ基盤整備、正式リリース</td>
+      </tr>
+    </tbody></table>
+
+    <h2 id="sec15">15. リスク・留意点</h2>
+    <div class="alert-box">
+      <strong>【注意】WOFF固有の制約</strong>
+      WOFFのEndpoint
+      URLにはaccess_token等の重要情報が付与されるため、アクセスログ等への露出を防ぐこと。フロントエンドでの処理完了後は速やかに内部セッションへ移行する。
+    </div>
+    <div class="alert-box">
+      <strong>【注意】Incoming Webhookの制約</strong>
+      発行可能なURL数（最大5）やリクエスト数に制限があるため、投稿ごとの即時送信ではなく、Workerを利用したバッチ処理や重要投稿のフィルタリングを推奨する。認証用途には絶対に使用しないこと。
+    </div>
+
+    <h2 id="sec16">16. 実装指示プロンプト集</h2>
+
+    <h3>16.1 バックエンド実装用プロンプト (KIMI / Claude Code向け)</h3>
+    <pre><code>
+以下の仕様に基づき、Go言語で社内SNSのバックエンド基盤を実装してください。
+前提条件：
+- chiルーターを利用し、cmd/api/main.go をエントリーポイントとする。
+- internal/domain, internal/usecase, internal/handler, internal/repositoryのレイヤードアーキテクチャを採用する。
+- データベースはPostgreSQLを利用し、database/sql または sqlx を用いる。
+完了条件：
+- users, postsテーブルに対するCRUDのUsecaseおよびHandlerが実装されていること。
+- エラーハンドリングが一元化されていること。
+出力物：
+- Goソースコード一式。
+</code></pre>
+
+    <h3>16.2 認証実装用プロンプト</h3>
+    <pre><code>
+LINE WORKS連携の認証基盤を実装してください。
+前提条件：
+- internal/integration/lineworks 配下に、WOFFからのトークン検証処理とOIDC(Authorization Code Flow)のコールバック処理を実装する。
+- セッション管理はCookieベース(HttpOnly, Secure)とする。
+完了条件：
+- POST /internal/auth/woff/bootstrap エンドポイントが正常に動作し、Cookieを発行すること。
+出力物：
+- ハンドラ、ユースケース、LINE WORKS APIクライアントのコード。
+</code></pre>
+
+    <h2 id="sec17">17. 付録</h2>
+
+    <h3>17.1 MVP範囲</h3>
+    <ul>
+      <li>全社/部署フィード</li>
+      <li>テキスト/画像投稿</li>
+      <li>いいね</li>
+      <li>コメント</li>
+      <li>ハッシュタグ</li>
+      <li>公開範囲制御</li>
+      <li>LINE WORKS通知（Incoming Webhook）</li>
+    </ul>
+
+    <h3>17.2 将来拡張候補</h3>
+    <ul>
+      <li>Bot APIを利用した双方向通知（承認ワークフロー、リマインド、対話型操作）</li>
+      <li>動画アップロードおよびサムネイル生成</li>
+      <li>リッチなリプライツリー</li>
+      <li>おすすめフィード、トレンド分析、レコメンド</li>
+      <li>管理機能の強化（監査ダッシュボード、通報分析、利用状況分析）</li>
+    </ul>
+
+    <h3>17.3 実装フェーズ別プロンプトパック</h3>
+    <p>
+      本プロンプトパックは、Claude Code および KIMI に対して、そのまま投入できる実務用テンプレートである。
+      各プロンプトは、対象フェーズ、前提条件、制約、完了条件、期待出力を明示している。
+      実装担当者は、対象フェーズに応じて必要なプロンプトを選択し、リポジトリの現状に合わせて微修正のうえ利用すること。
+    </p>
+
+    <div class="alert-box">
+      <strong>【利用方針】</strong>
+      各プロンプトは「仕様逸脱を避けること」「既存レイヤ構成を壊さないこと」「完了条件を満たすまで実装・整理すること」を前提とする。
+      Claude Code には実装・編集・リファクタリングを、KIMI には設計補助・コード生成・レビュー補助を主に期待する。
+    </div>
+
+    <h4>17.3.1 Phase 0：認証基盤・POC 構築プロンプト</h4>
+    <pre><code>あなたはシニアGoバックエンドエンジニアです。
+以下の仕様に従い、LINE WORKS連携 社内SNSシステムの Phase 0 を実装してください。
+
+【目的】
+- WOFF起動からアプリセッション確立までの最小導線を作る
+- 外部ブラウザからの OIDC ログイン導線を作る
+- PostgreSQL 接続、基本テーブル、疎通確認用APIを整備する
+
+【前提】
+- Go 言語を使用する
+- ルーターは chi を使用する
+- ディレクトリ構成は cmd/api, cmd/worker, internal/domain, internal/usecase, internal/handler, internal/repository, internal/integration/lineworks を守る
+- 認証は LINE WORKS OIDC / OAuth 2.0 と WOFF を前提とする
+- セッションは Cookie ベース（HttpOnly, Secure, SameSite=Lax 以上）とする
+- DB は PostgreSQL を使用する
+
+【実装対象】
+1. cmd/api/main.go の作成
+2. アプリ設定読み込み（環境変数ベース）
+3. DB 接続初期化
+4. /healthz エンドポイント
+5. /internal/auth/woff/bootstrap の雛形実装
+6. /auth/oidc/login, /auth/oidc/callback の雛形実装
+7. users, departments の最小マイグレーション作成
+8. LINE WORKS 連携クライアントのインターフェース定義
+9. セッション発行・取得・破棄の共通処理
+
+【制約】
+- まだ大規模なフロント実装はしない
+- Redis は導入しない
+- 依存ライブラリは必要最小限にする
+- 仕様書にない独自アーキテクチャへ変更しない
+
+【完了条件】
+- ローカルで API サーバが起動する
+- /healthz が 200 を返す
+- WOFF bootstrap と OIDC login/callback のルーティングが存在する
+- DB マイグレーションが適用可能である
+- users / departments の永続化モデルが定義されている
+- README ではなく、実装コードと設定例により起動方法が追える
+
+【期待出力】
+- 追加・更新したファイル一覧
+- 主要な実装ポイントの要約
+- 今回はスタブ実装に留めた箇所
+- 次フェーズへ渡すべき TODO
+</code></pre>
+
+    <h4>17.3.2 Phase 1：投稿・フィード・メディア基盤プロンプト</h4>
+    <pre><code>あなたは Go / PostgreSQL / SSR 構成に強い実装担当者です。
+LINE WORKS連携 社内SNSシステムの Phase 1 として、投稿・フィード・メディア基盤を実装してください。
+
+【目的】
+- テキスト投稿、画像添付、ホームフィード表示を成立させる
+- モバイル中心の軽量UIを SSR + HTMX 前提で整備する
+
+【前提】
+- 既存の Phase 0 実装を尊重し、既存の責務分離を壊さないこと
+- Go のレイヤードアーキテクチャを維持すること
+- PostgreSQL を正とし、画像は S3/MinIO に保存すること
+
+【実装対象】
+1. posts, post_media, hashtags, post_hashtags テーブル追加
+2. 投稿作成 Usecase / Handler 実装
+3. フィード取得 Usecase / Handler 実装
+4. ハッシュタグ抽出処理
+5. メディアアップロード用 presign API 雛形
+6. ホームフィード HTML テンプレート
+7. 投稿作成フォーム HTML テンプレート
+8. 入力バリデーション（本文文字数、公開範囲、添付上限）
+
+【制約】
+- SPA 化しない
+- 画像変換の重い処理はワーカーへ逃がせる前提で、同期処理を最小限にする
+- まずは latest フィードのみでよい
+- 公開範囲は company / department / private の3つを先行実装してよい
+
+【完了条件】
+- 投稿が DB に保存される
+- フィード画面で投稿一覧が表示される
+- ハッシュタグが保存される
+- 画像アップロードの受け口が定義される
+- テンプレートが最低限操作可能な形で存在する
+
+【期待出力】
+- 実装した API / Usecase / Repository / Template の一覧
+- テスト観点
+- 次フェーズで追加すべき項目
+</code></pre>
+
+    <h4>17.3.3 Phase 2：コメント・リアクション・通知連携プロンプト</h4>
+    <pre><code>あなたは LINE WORKS 連携機能を含む社内SNSのバックエンド実装者です。
+Phase 2 として、コメント、いいね、メンション、通知を実装してください。
+
+【目的】
+- 投稿へのコメントとリアクションを追加する
+- アプリ内通知を追加する
+- LINE WORKS Incoming Webhook 通知をワーカー経由で送れるようにする
+
+【前提】
+- 通知は認証用途ではなく通知用途に限定する
+- Incoming Webhook の制限を考慮し、同期送信を避ける
+- notification worker を用いた非同期送信とする
+
+【実装対象】
+1. comments, reactions, mentions, notifications, webhook_deliveries テーブル追加
+2. コメント作成 / 取得 API
+3. いいね追加 / 解除 API
+4. メンション抽出ロジック
+5. アプリ内通知作成ロジック
+6. Worker による Incoming Webhook 送信処理
+7. 再送回数・送信結果の記録
+8. 投稿詳細テンプレート、通知一覧テンプレート
+
+【制約】
+- コメントは1階層まで
+- リアクションは like のみでよい
+- Webhook URL をコードに直書きしない
+- 送信失敗時の再送ポリシーを最低限実装する
+
+【完了条件】
+- コメント追加・取得ができる
+- いいねの追加・解除ができる
+- メンション時に notifications が記録される
+- Worker が Webhook 送信ジョブを処理できる
+- webhook_deliveries に結果が残る
+
+【期待出力】
+- 変更ファイル一覧
+- 通知フローの説明
+- 想定される運用注意点
+</code></pre>
+
+    <h4>17.3.4 Phase 3：通報・管理・監査ログプロンプト</h4>
+    <pre><code>あなたは業務システムの管理機能実装に強いエンジニアです。
+Phase 3 として、通報機能、管理画面、監査ログを実装してください。
+
+【目的】
+- 不適切投稿やコメントを通報できるようにする
+- 管理者が通報一覧を確認し、対応を記録できるようにする
+- 重要操作を audit_logs に保存する
+
+【前提】
+- admin / moderator / user の権限差分を導入する
+- 管理画面は PC ブラウザ利用を前提とする
+- OIDC ログイン済みの管理者のみ利用可能とする
+
+【実装対象】
+1. reports, audit_logs テーブル追加
+2. 通報 API 実装
+3. 管理者向け通報一覧 API / 画面
+4. 投稿非表示、削除、通報解決処理
+5. 権限チェックミドルウェア
+6. audit_logs 記録処理
+7. 管理画面テンプレート
+
+【制約】
+- 一般ユーザーから管理画面へ到達できないこと
+- 監査ログは削除せず追加のみとする
+- まずは最小限の一覧 + 対応操作でよい
+
+【完了条件】
+- 通報が保存される
+- 管理者が一覧・詳細・対応を実行できる
+- 対応結果が監査ログに残る
+- 権限のないユーザーは拒否される
+
+【期待出力】
+- 権限設計の説明
+- 管理画面の主要操作
+- 残課題
+</code></pre>
+
+    <h4>17.3.5 Phase 4：安定化・性能改善・リリース準備プロンプト</h4>
+    <pre><code>あなたは本番リリース前の品質向上と運用整備を担当するエンジニアです。
+Phase 4 として、性能改善、監視、障害切り分けしやすい構成への整理を行ってください。
+
+【目的】
+- 本番運用に耐える最低限の品質へ引き上げる
+- ボトルネック、ログ不足、運用上の危険箇所を減らす
+
+【前提】
+- 既存の機能仕様を変えず、品質改善を主眼とする
+- まずは単純で説明可能な改善を優先する
+
+【実装対象】
+1. DB インデックス見直し
+2. N+1 クエリ点検
+3. 構造化ログの整備
+4. エラーレスポンス標準化
+5. 監査ログ・通知ログの確認導線整理
+6. Docker Compose / 環境変数例 / 起動手順の整備
+7. 最低限の結合テスト・ハンドラテスト追加
+
+【制約】
+- マイクロサービス化しない
+- 不要な新規ミドルウェアを増やしすぎない
+- 現時点で必須でない外部基盤は追加しない
+
+【完了条件】
+- ローカル起動と検証手順が明確である
+- 主なAPIに対して最低限のテストが存在する
+- 性能上の危険箇所に対する改善がコードへ反映される
+- ログを見れば主要障害を追跡できる
+
+【期待出力】
+- 改善内容の一覧
+- テスト追加内容
+- リリース前チェックリスト
+</code></pre>
+
+    <h4>17.3.6 Claude Code 向け一括実装プロンプト</h4>
+    <pre><code>以下の仕様書に基づき、Go で LINE WORKS連携 社内SNSシステムを段階実装してください。
+あなたは既存コードベースを読み取り、最小差分で堅実に前進させる Claude Code です。
+
+【必須方針】
+- 既存ファイルをまず把握し、責務に沿って編集すること
+- レイヤードアーキテクチャを維持すること
+- WOFF は入口、OIDC は認証、Incoming Webhook は通知用途に限定すること
+- UI は SSR + HTMX 前提とし、SPA に寄せないこと
+- Redis や過剰なミドルウェアは追加しないこと
+- 変更理由が説明できる実装だけを採用すること
+
+【進め方】
+1. 現状コードを要約
+2. 今回フェーズで変更が必要なファイルを特定
+3. 実装
+4. 必要最小限のテスト追加
+5. 残課題を明記
+
+【出力形式】
+- 変更概要
+- 編集ファイル一覧
+- 実装内容
+- テスト内容
+- 未実装項目 / 次の推奨ステップ
+</code></pre>
+
+    <h4>17.3.7 KIMI 向け設計・実装支援プロンプト</h4>
+    <pre><code>あなたは設計補助とコード生成補助を行う KIMI です。
+以下の仕様書を前提に、対象フェーズの実装案を具体化してください。
+
+【依頼内容】
+- 対象フェーズに必要なテーブル、API、ユースケース、テンプレートを洗い出す
+- 実装順序を提案する
+- Go の関数・構造体・インターフェースの叩き台を作る
+- 実装時の落とし穴を列挙する
+
+【前提】
+- WOFF / OIDC / Incoming Webhook の役割を混同しない
+- Go モノリス前提で過剰設計を避ける
+- 仕様にない新機能は提案してもよいが、必須実装とは分離する
+
+【出力形式】
+1. 実装対象一覧
+2. 推奨実装順序
+3. Go コード雛形
+4. 注意点
+5. レビュー観点
+</code></pre>
+
+    <h4>17.3.8 フェーズ横断レビュー・リファクタリングプロンプト</h4>
+    <pre><code>あなたは Go プロダクトのレビュー担当です。
+現在の実装を、仕様適合性・保守性・運用性の観点でレビューしてください。
+
+【レビュー観点】
+- 仕様書との不整合はないか
+- handler / usecase / repository の責務が崩れていないか
+- LINE WORKS 連携コードが application 層に漏れていないか
+- セッション / 認可 / 監査の扱いに危険がないか
+- SQL とインデックス設計に無理がないか
+- Worker を使うべき処理が同期実装されていないか
+- テンプレートが過度に複雑化していないか
+
+【出力形式】
+- 問題点
+- 重大度
+- 修正方針
+- 必要なら差分案
+</code></pre>
+  
+
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body></html>
