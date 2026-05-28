@@ -347,7 +347,7 @@ function FeedPage() {
                           )}
                         </div>
                       </div>
-                    )
+                    )}
                   </div>
                 </div>
               </CardContent>
