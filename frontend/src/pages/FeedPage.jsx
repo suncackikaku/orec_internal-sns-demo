@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { Heart, User, MessageSquare, Trash2, Send } from 'lucide-react'
+import { Heart, User, MessageSquare, Trash2, Send, Pencil } from 'lucide-react'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
@@ -20,6 +20,9 @@ function FeedPage() {
   const [comments, setComments] = useState({})
   const [commentInputs, setCommentInputs] = useState({})
   const [commentLoading, setCommentLoading] = useState({})
+  const [editingPost, setEditingPost] = useState(null)
+  const [editBody, setEditBody] = useState('')
+  const [editLoading, setEditLoading] = useState(false)
 
   useEffect(() => {
     fetchFeed()
@@ -149,6 +152,55 @@ function FeedPage() {
     }
   }
 
+  const handleEditClick = (post) => {
+    setEditingPost(post)
+    setEditBody(post.body)
+  }
+
+  const handleUpdatePost = async () => {
+    if (!editBody.trim()) return
+    setEditLoading(true)
+    try {
+      const res = await fetch(`${API_URL}/posts/${editingPost.id}`, {
+        method: 'PUT',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ body: editBody.trim() })
+      })
+      if (res.ok) {
+        setPosts(prev => prev.map(post => {
+          if (post.id === editingPost.id) {
+            return { ...post, body: editBody.trim() }
+          }
+          return post
+        }))
+        setEditingPost(null)
+        setEditBody('')
+      }
+    } catch (err) {
+      console.error('Failed to update post:', err)
+    } finally {
+      setEditLoading(false)
+    }
+  }
+
+  const handleDeletePost = async (postId) => {
+    if (!confirm('この投稿を削除しますか？')) return
+    try {
+      const res = await fetch(`${API_URL}/posts/${postId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      })
+      if (res.ok) {
+        setPosts(prev => prev.filter(post => post.id !== postId))
+      }
+    } catch (err) {
+      console.error('Failed to delete post:', err)
+    }
+  }
+
   const formatTimeAgo = (dateString) => {
     const date = new Date(dateString)
     const now = new Date()
@@ -240,6 +292,26 @@ function FeedPage() {
                       <span className="text-xs text-muted-foreground">
                         {formatTimeAgo(post.created_at)}
                       </span>
+                      {user?.id === post.author_id && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-auto py-0 px-1 text-muted-foreground hover:text-primary"
+                            onClick={() => handleEditClick(post)}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-auto py-0 px-1 text-muted-foreground hover:text-destructive"
+                            onClick={() => handleDeletePost(post.id)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </>
+                      )}
                     </div>
                     
                     <p className="text-sm text-foreground mb-3">{post.body}</p>
@@ -381,6 +453,38 @@ function FeedPage() {
                 : '自分に関連する投稿がありません。'}
             </CardContent>
           </Card>
+        )}
+
+        {/* 編集モーダル */}
+        {editingPost && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="bg-background rounded-lg shadow-lg max-w-lg w-full mx-4 p-6">
+              <h2 className="text-lg font-bold mb-4">投稿を編集</h2>
+              <textarea
+                value={editBody}
+                onChange={(e) => setEditBody(e.target.value)}
+                className="w-full min-h-[120px] p-3 border rounded-md resize-none"
+                maxLength={4000}
+              />
+              <div className="flex justify-end gap-2 mt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setEditingPost(null)
+                    setEditBody('')
+                  }}
+                >
+                  キャンセル
+                </Button>
+                <Button
+                  onClick={handleUpdatePost}
+                  disabled={editLoading || !editBody.trim()}
+                >
+                  {editLoading ? '更新中...' : '更新'}
+                </Button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

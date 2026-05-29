@@ -339,6 +339,8 @@ func main() {
 
 		// 投稿機能
 		r.Post("/api/posts", createPostHandler)
+		r.Put("/api/posts/{postId}", updatePostHandler)
+		r.Delete("/api/posts/{postId}", deletePostHandler)
 		r.Post("/api/upload", uploadHandler)
 
 		// いいね機能
@@ -1763,6 +1765,136 @@ func createPostHandler(w http.ResponseWriter, r *http.Request) {
 		"id":      postID,
 		"message": "Post created successfully",
 	})
+}
+
+func updatePostHandler(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value("user").(*auth.User)
+	postID := chi.URLParam(r, "postId")
+
+	var req struct {
+		Body           string   `json:"body"`
+		Tags           []string `json:"tags"`
+		DepartmentIDs  []string `json:"department_ids"`
+		ImageURLs      []string `json:"image_urls"`
+		VisibilityType string   `json:"visibility_type"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if req.Body == "" {
+		http.Error(w, "Body is required", http.StatusBadRequest)
+		return
+	}
+
+	if len([]rune(req.Body)) > 4000 {
+		http.Error(w, "Body must be 4000 characters or less", http.StatusBadRequest)
+		return
+	}
+
+	// Check ownership
+	var authorID string
+	err := db.Get(&authorID, `SELECT author_id FROM posts WHERE id = $1`, postID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Post not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if authorID != user.ID {
+		http.Error(w, "Unauthorized", http.StatusForbidden)
+		return
+	}
+
+	// Update post
+	visibilityType := req.VisibilityType
+	if visibilityType != "" && visibilityType != "company" && visibilityType != "department" && visibilityType != "group" && visibilityType != "private" {
+		http.Error(w, "Invalid visibility_type", http.StatusBadRequest)
+		return
+	}
+
+	if len(req.Tags) > 0 && len(req.ImageURLs) > 0 {
+		_, err = db.Exec(`
+			UPDATE posts SET body = $1, tags = $2, image_urls = $3, visibility_type = COALESCE(NULLIF($4, ''), visibility_type)
+			WHERE id = $5`,
+			req.Body, pq.Array(req.Tags), pq.Array(req.ImageURLs), visibilityType, postID)
+	} else if len(req.Tags) > 0 {
+		_, err = db.Exec(`
+			UPDATE posts SET body = $1, tags = $2, image_urls = $3, visibility_type = COALESCE(NULLIF($4, ''), visibility_type)
+			WHERE id = $5`,
+			req.Body, pq.Array(req.Tags), pq.Array([]string{}), visibilityType, postID)
+	} else if len(req.ImageURLs) > 0 {
+		_, err = db.Exec(`
+			UPDATE posts SET body = $1, tags = $2, image_urls = $3, visibility_type = COALESCE(NULLIF($4, ''), visibility_type)
+			WHERE id = $5`,
+			req.Body, pq.Array([]string{}), pq.Array(req.ImageURLs), visibilityType, postID)
+	} else {
+		_, err = db.Exec(`
+			UPDATE posts SET body = $1, tags = $2, image_urls = $3, visibility_type = COALESCE(NULLIF($4, ''), visibility_type)
+			WHERE id = $5`,
+			req.Body, pq.Array([]string{}), pq.Array([]string{}), visibilityType, postID)
+	}
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Update department tags
+	if req.DepartmentIDs != nil {
+		_, err = db.Exec(`DELETE FROM post_department_tags WHERE post_id = $1`, postID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		for _, deptID := range req.DepartmentIDs {
+			_, err = db.Exec(`
+				INSERT INTO post_department_tags (post_id, department_id)
+				VALUES ($1, $2)
+				ON CONFLICT DO NOTHING`,
+				postID, deptID)
+			if err != nil {
+				fmt.Printf("Failed to insert post_department_tag: %v\n", err)
+			}
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"message": "Post updated successfully"})
+}
+
+func deletePostHandler(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value("user").(*auth.User)
+	postID := chi.URLParam(r, "postId")
+
+	// Check ownership
+	var authorID string
+	err := db.Get(&authorID, `SELECT author_id FROM posts WHERE id = $1`, postID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Post not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if authorID != user.ID {
+		http.Error(w, "Unauthorized", http.StatusForbidden)
+		return
+	}
+
+	_, err = db.Exec(`DELETE FROM posts WHERE id = $1`, postID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Post deleted successfully"})
 }
 
 func adminDeleteUser(w http.ResponseWriter, r *http.Request) {
