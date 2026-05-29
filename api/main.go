@@ -1339,7 +1339,7 @@ func getFeedHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query += `
-		GROUP BY p.id, u.display_name, up.profile_image_url, l.count, c.count, ul.user_id
+		GROUP BY p.id, p.author_id, p.body, p.tags, p.image_urls, p.visibility_type, p.created_at, u.display_name, up.profile_image_url, l.count, c.count, ul.user_id
 		ORDER BY p.created_at DESC
 		LIMIT $2 OFFSET $3`
 
