@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -131,6 +132,7 @@ type Post struct {
 	Body            string         `json:"body" db:"body"`
 	Tags            pq.StringArray `json:"tags" db:"tags"`
 	DepartmentTags  pq.StringArray `json:"department_tags" db:"department_tags"`
+	Hashtags        pq.StringArray `json:"hashtags" db:"hashtags"`
 	ImageURLs       pq.StringArray `json:"image_urls" db:"image_urls"`
 	VisibilityType  string         `json:"visibility_type" db:"visibility_type"`
 	CreatedAt       time.Time      `json:"created_at" db:"created_at"`
@@ -1220,6 +1222,7 @@ func getFeedHandler(w http.ResponseWriter, r *http.Request) {
 		SELECT 
 			p.id, p.author_id, u.display_name as author_name, p.body, p.tags, 
 			COALESCE(array_agg(d.name) FILTER (WHERE d.name IS NOT NULL), ARRAY[]::text[]) as department_tags,
+			COALESCE(array_agg(h.name) FILTER (WHERE h.name IS NOT NULL), ARRAY[]::text[]) as hashtags,
 			p.image_urls, p.visibility_type, p.created_at,
 			COALESCE(up.profile_image_url, '') as author_image_url,
 			COALESCE(l.count, 0) as like_count,
@@ -1230,6 +1233,8 @@ func getFeedHandler(w http.ResponseWriter, r *http.Request) {
 		LEFT JOIN user_profiles up ON u.id = up.user_id
 		LEFT JOIN post_department_tags pdt ON p.id = pdt.post_id
 		LEFT JOIN departments d ON pdt.department_id = d.id
+		LEFT JOIN post_hashtags ph ON p.id = ph.post_id
+		LEFT JOIN hashtags h ON ph.hashtag_id = h.id
 		LEFT JOIN (
 			SELECT post_id, COUNT(*) as count 
 			FROM likes 
@@ -1756,6 +1761,9 @@ func createPostHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// ハッシュタグ抽出・保存
+	extractAndSaveHashtags(postID, req.Body)
+
 	// Create activity for new post
 	activityMessage := fmt.Sprintf("%sさんが新しい投稿をしました", user.DisplayName)
 	createActivity(user.ID, "post_created", activityMessage)
@@ -1765,6 +1773,61 @@ func createPostHandler(w http.ResponseWriter, r *http.Request) {
 		"id":      postID,
 		"message": "Post created successfully",
 	})
+}
+
+// extractAndSaveHashtags extracts hashtags from text and saves them
+func extractAndSaveHashtags(postID string, text string) {
+	// Extract hashtags using regex: # followed by non-space, non-punctuation characters
+	re := regexp.MustCompile(`#([^\s。、！？\.,\!\?]+)`)
+	matches := re.FindAllStringSubmatch(text, -1)
+
+	if len(matches) == 0 {
+		return
+	}
+
+	// Get unique hashtags
+	hashtagSet := make(map[string]bool)
+	for _, match := range matches {
+		if len(match) > 1 {
+			// Remove trailing punctuation if any
+			tag := strings.TrimRight(match[1], "。、！？.,!?")
+			if tag != "" {
+				hashtagSet[strings.ToLower(tag)] = true
+			}
+		}
+	}
+
+	// Save hashtags
+	for hashtag := range hashtagSet {
+		var hashtagID string
+		err := db.QueryRow(`
+			INSERT INTO hashtags (name)
+			VALUES ($1)
+			ON CONFLICT (name) DO UPDATE SET name = $1
+			RETURNING id`,
+			hashtag).Scan(&hashtagID)
+		if err != nil {
+			fmt.Printf("Failed to insert hashtag: %v\n", err)
+			continue
+		}
+
+		_, err = db.Exec(`
+			INSERT INTO post_hashtags (post_id, hashtag_id)
+			VALUES ($1, $2)
+			ON CONFLICT DO NOTHING`,
+			postID, hashtagID)
+		if err != nil {
+			fmt.Printf("Failed to insert post_hashtag: %v\n", err)
+		}
+	}
+}
+
+// deletePostHashtags removes all hashtag associations for a post
+func deletePostHashtags(postID string) {
+	_, err := db.Exec(`DELETE FROM post_hashtags WHERE post_id = $1`, postID)
+	if err != nil {
+		fmt.Printf("Failed to delete post_hashtags: %v\n", err)
+	}
 }
 
 func updatePostHandler(w http.ResponseWriter, r *http.Request) {
@@ -1861,6 +1924,10 @@ func updatePostHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+
+	// Update hashtags
+	deletePostHashtags(postID)
+	extractAndSaveHashtags(postID, req.Body)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"message": "Post updated successfully"})
