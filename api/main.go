@@ -325,6 +325,7 @@ func main() {
 		r.Put("/api/users/me/profile", updateProfileHandler)
 		r.Put("/api/users/me/department", updateUserDepartmentHandler)
 		r.Get("/api/search", searchHandler)
+		r.Get("/api/search/hashtag", searchByHashtagHandler)
 		r.Get("/api/users", getUsersList)
 		r.Get("/api/activities", getActivitiesHandler)
 		r.Get("/api/activities/stream", activitiesStreamHandler)
@@ -780,6 +781,38 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(result)
+}
+
+func searchByHashtagHandler(w http.ResponseWriter, r *http.Request) {
+	tag := r.URL.Query().Get("tag")
+	if tag == "" {
+		http.Error(w, "Tag parameter is required", http.StatusBadRequest)
+		return
+	}
+
+	var posts []Post
+	err := db.Select(&posts, `
+		SELECT p.id, p.author_id, u.display_name as author_name, p.body, p.tags, 
+			COALESCE(array_agg(d.name) FILTER (WHERE d.name IS NOT NULL), ARRAY[]::text[]) as department_tags,
+			COALESCE(array_agg(h.name) FILTER (WHERE h.name IS NOT NULL), ARRAY[]::text[]) as hashtags,
+			p.image_urls, p.visibility_type, p.created_at
+		FROM posts p
+		JOIN users u ON p.author_id = u.id
+		LEFT JOIN post_department_tags pdt ON p.id = pdt.post_id
+		LEFT JOIN departments d ON pdt.department_id = d.id
+		LEFT JOIN post_hashtags ph ON p.id = ph.post_id
+		LEFT JOIN hashtags h ON ph.hashtag_id = h.id
+		WHERE h.name = $1
+		GROUP BY p.id, u.display_name
+		ORDER BY p.created_at DESC
+		LIMIT 50`, tag)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(posts)
 }
 
 type UsersListResponse struct {
@@ -1293,14 +1326,16 @@ func getFeedHandler(w http.ResponseWriter, r *http.Request) {
 		)`
 	} else {
 		query += `
-		WHERE p.visibility_type = 'company' 
+		WHERE (
+			p.visibility_type = 'company' 
 			OR (p.visibility_type = 'department' AND p.author_id IN (
 				SELECT id FROM users 
 				WHERE primary_department_id = (
 					SELECT primary_department_id FROM users WHERE id = $1
 				)
 			))
-			OR (p.visibility_type = 'private' AND p.author_id = $1)`
+			OR (p.visibility_type = 'private' AND p.author_id = $1)
+		)`
 	}
 
 	query += `

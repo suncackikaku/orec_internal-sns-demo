@@ -32,18 +32,20 @@ function FeedPage() {
   const fetchFeed = async () => {
     setLoading(true)
     try {
-      const filterParam = activeTab === 'related' ? '&filter=related' : ''
-      const res = await fetch(`${API_URL}/feed?page=${page}&per_page=20${filterParam}`, {
-        headers: getAuthHeaders()
-      })
+      let res
+      if (selectedHashtag) {
+        // ハッシュタグ検索APIを使用
+        res = await fetch(`${API_URL}/search/hashtag?tag=${encodeURIComponent(selectedHashtag)}`, {
+          headers: getAuthHeaders()
+        })
+      } else {
+        const filterParam = activeTab === 'related' ? '&filter=related' : ''
+        res = await fetch(`${API_URL}/feed?page=${page}&per_page=20${filterParam}`, {
+          headers: getAuthHeaders()
+        })
+      }
       if (res.ok) {
-        let data = await res.json()
-        // ハッシュタグフィルタ（フロントエンド側）
-        if (selectedHashtag) {
-          data = data.filter(post => 
-            post.hashtags && post.hashtags.includes(selectedHashtag)
-          )
-        }
+        const data = await res.json()
         setPosts(data || [])
       } else {
         setPosts([])
