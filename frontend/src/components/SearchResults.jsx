@@ -21,6 +21,9 @@ function SearchResults({ keyword, onClear }) {
 
   React.useEffect(() => {
     if (keyword) {
+      if (keyword.startsWith('#')) {
+        setActiveTab('posts')
+      }
       performSearch()
     }
   }, [keyword])
@@ -30,17 +33,31 @@ function SearchResults({ keyword, onClear }) {
     setError('')
     
     try {
-      const res = await fetch(`${API_URL}/search?q=${encodeURIComponent(keyword)}`, {
-        headers: getAuthHeaders()
-      })
-      
-      if (!res.ok) {
-        const errorText = await res.text()
-        throw new Error(errorText)
+      let res
+      if (keyword.startsWith('#')) {
+        // ハッシュタグ検索
+        const tag = keyword.substring(1)
+        res = await fetch(`${API_URL}/search/hashtag?tag=${encodeURIComponent(tag)}`, {
+          headers: getAuthHeaders()
+        })
+        if (!res.ok) {
+          const errorText = await res.text()
+          throw new Error(errorText)
+        }
+        const posts = await res.json()
+        setResults({ users: [], departments: [], posts })
+      } else {
+        // 通常検索
+        res = await fetch(`${API_URL}/search?q=${encodeURIComponent(keyword)}`, {
+          headers: getAuthHeaders()
+        })
+        if (!res.ok) {
+          const errorText = await res.text()
+          throw new Error(errorText)
+        }
+        const data = await res.json()
+        setResults(data)
       }
-      
-      const data = await res.json()
-      setResults(data)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -86,6 +103,8 @@ function SearchResults({ keyword, onClear }) {
     )
   }
 
+  const isHashtagSearch = keyword.startsWith('#')
+  
   const tabs = [
     { id: 'users', label: '社員', count: results.users?.length || 0, icon: User },
     { id: 'departments', label: '部署', count: results.departments?.length || 0, icon: Building2 },
@@ -95,33 +114,37 @@ function SearchResults({ keyword, onClear }) {
   return (
     <Card className="mb-6">
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-lg">検索結果: 「{keyword}」</CardTitle>
+        <CardTitle className="text-lg">
+          {isHashtagSearch ? `ハッシュタグ検索: ${keyword}` : `検索結果: 「${keyword}」`}
+        </CardTitle>
         <Button variant="outline" size="sm" onClick={onClear}>
           <X className="h-4 w-4 mr-1" />
           クリア
         </Button>
       </CardHeader>
       <CardContent>
-        {/* タブ */}
-        <div className="flex border-b mb-4">
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === tab.id
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <tab.icon className="h-4 w-4" />
-              {tab.label}
-              <Badge variant={activeTab === tab.id ? "default" : "secondary"} className="ml-1">
-                {tab.count}
-              </Badge>
-            </button>
-          ))}
-        </div>
+        {/* タブ - ハッシュタグ検索の場合は投稿のみ表示 */}
+        {!isHashtagSearch && (
+          <div className="flex border-b mb-4">
+            {tabs.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === tab.id
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <tab.icon className="h-4 w-4" />
+                {tab.label}
+                <Badge variant={activeTab === tab.id ? "default" : "secondary"} className="ml-1">
+                  {tab.count}
+                </Badge>
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* 結果表示 */}
         <div className="space-y-3 max-h-[400px] overflow-y-auto">
@@ -176,6 +199,15 @@ function SearchResults({ keyword, onClear }) {
                 </span>
               </div>
               <p className="text-sm text-foreground">{post.body}</p>
+              {post.hashtags && post.hashtags.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {post.hashtags.map((tag, index) => (
+                    <Badge key={index} variant="outline" className="text-xs text-green-600 border-green-300">
+                      #{tag}
+                    </Badge>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
