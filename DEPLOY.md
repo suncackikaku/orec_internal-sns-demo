@@ -233,7 +233,7 @@ cd /opt/sns-app  # プロジェクトディレクトリ
 ssh root@160.251.182.217 
 ```
 
-cd /opt/sns-app
+cd /opt/internal-sns-demo-app/orec_internal-sns-demo
 # 1. 最新コード取得
 git pull origin main
 # 2. コンテナ停止・削除

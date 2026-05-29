@@ -224,6 +224,7 @@ type Activity struct {
 var db *sqlx.DB
 var authenticator *auth.LocalAuthenticator
 var adminAuthenticator *auth.AdminAuthenticator
+var oidcAuthenticator *auth.OIDCAuthenticator
 
 // ActivityChannel for SSE broadcasting
 var activityChannel = make(chan Activity, 100)
@@ -292,6 +293,17 @@ func main() {
 	dbAdminAuth := &DBAdminAuth{db: db}
 	adminAuthenticator = auth.NewAdminAuthenticator(jwtSecret, dbAdminAuth)
 
+	// Initialize OIDC authenticator
+	oidcClientID := os.Getenv("OIDC_CLIENT_ID")
+	oidcClientSecret := os.Getenv("OIDC_CLIENT_SECRET")
+	oidcRedirectURI := os.Getenv("OIDC_REDIRECT_URI")
+	if oidcRedirectURI == "" {
+		oidcRedirectURI = "http://localhost:8080/api/auth/oidc/callback"
+	}
+	if oidcClientID != "" && oidcClientSecret != "" {
+		oidcAuthenticator = auth.NewOIDCAuthenticator(oidcClientID, oidcClientSecret, oidcRedirectURI, jwtSecret, dbAuth)
+	}
+
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
@@ -311,6 +323,8 @@ func main() {
 	r.Post("/api/auth/register", registerHandler)
 	r.Post("/api/auth/login", loginHandler)
 	r.Post("/api/auth/woff", woffAuthHandler)
+	r.Get("/api/auth/oidc/login", oidcLoginHandler)
+	r.Get("/api/auth/oidc/callback", oidcCallbackHandler)
 	r.Get("/api/departments", getDepartmentsList)
 	r.Get("/api/users/{userId}/profile", getUserProfile)
 
@@ -2170,4 +2184,181 @@ func woffAuthHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(AuthResponse{Token: token, User: *user})
+}
+
+func oidcLoginHandler(w http.ResponseWriter, r *http.Request) {
+	if oidcAuthenticator == nil {
+		http.Error(w, "OIDC is not configured", http.StatusServiceUnavailable)
+		return
+	}
+
+	// Generate state parameter
+	state, err := auth.GenerateState()
+	if err != nil {
+		http.Error(w, "Failed to generate state", http.StatusInternalServerError)
+		return
+	}
+
+	// Generate PKCE parameters
+	pkce, err := auth.GeneratePKCE()
+	if err != nil {
+		http.Error(w, "Failed to generate PKCE", http.StatusInternalServerError)
+		return
+	}
+
+	// Store state and PKCE in cookies
+	http.SetCookie(w, &http.Cookie{
+		Name:     "oidc_state",
+		Value:    state,
+		MaxAge:   600,
+		HttpOnly: true,
+		Secure:   r.TLS != nil,
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     "oidc_code_verifier",
+		Value:    pkce.CodeVerifier,
+		MaxAge:   600,
+		HttpOnly: true,
+		Secure:   r.TLS != nil,
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
+	})
+
+	// Store state in state store
+	oidcAuthenticator.StateStore.StoreState(state)
+
+	// Redirect to LINE WORKS authorization endpoint
+	authURL := oidcAuthenticator.GetAuthorizationURL(state, pkce.CodeChallenge)
+	http.Redirect(w, r, authURL, http.StatusFound)
+}
+
+func oidcCallbackHandler(w http.ResponseWriter, r *http.Request) {
+	if oidcAuthenticator == nil {
+		http.Error(w, "OIDC is not configured", http.StatusServiceUnavailable)
+		return
+	}
+
+	// Get authorization code and state from query parameters
+	code := r.URL.Query().Get("code")
+	state := r.URL.Query().Get("state")
+
+	if code == "" {
+		http.Error(w, "Authorization code not provided", http.StatusBadRequest)
+		return
+	}
+
+	// Get state from cookie
+	stateCookie, err := r.Cookie("oidc_state")
+	if err != nil {
+		http.Error(w, "State cookie not found", http.StatusBadRequest)
+		return
+	}
+
+	// Validate state
+	if state != stateCookie.Value || !oidcAuthenticator.StateStore.ValidateState(state) {
+		http.Error(w, "Invalid state parameter", http.StatusBadRequest)
+		return
+	}
+
+	// Get code verifier from cookie
+	verifierCookie, err := r.Cookie("oidc_code_verifier")
+	if err != nil {
+		http.Error(w, "Code verifier not found", http.StatusBadRequest)
+		return
+	}
+
+	// Exchange code for tokens
+	tokenResp, err := oidcAuthenticator.ExchangeCode(code, verifierCookie.Value)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to exchange code: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Get user info using access token
+	userInfo, err := oidcAuthenticator.GetUserInfo(tokenResp.AccessToken)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to get user info: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	dbAuth := &DBAuth{db: db}
+
+	// Check if user exists
+	user, err := dbAuth.GetUserByEmail(userInfo.Email)
+	if err != nil {
+		if err == auth.ErrUserNotFound {
+			// Create new OIDC user
+			userID, err := createOIDCUser(userInfo)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			user, err = dbAuth.GetUserByID(userID)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			// Create activity for new user registration
+			activityMessage := fmt.Sprintf("%sさんが新規追加されました", userInfo.DisplayName)
+			createActivity(user.ID, "user_registered", activityMessage)
+		} else {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Generate token
+	token, err := oidcAuthenticator.GenerateToken(user)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Clear OIDC cookies
+	http.SetCookie(w, &http.Cookie{
+		Name:     "oidc_state",
+		Value:    "",
+		MaxAge:   -1,
+		Path:     "/",
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     "oidc_code_verifier",
+		Value:    "",
+		MaxAge:   -1,
+		Path:     "/",
+	})
+
+	// Redirect to frontend with token
+	frontendURL := os.Getenv("FRONTEND_URL")
+	if frontendURL == "" {
+		frontendURL = "http://localhost:5173"
+	}
+	redirectURL := fmt.Sprintf("%s/oidc/callback?token=%s", frontendURL, token)
+	http.Redirect(w, r, redirectURL, http.StatusFound)
+}
+
+func createOIDCUser(userInfo *auth.OIDCUserInfo) (string, error) {
+	var userID string
+	err := db.QueryRow(`
+		INSERT INTO users (id, display_name, email, auth_provider, primary_department_id)
+		VALUES (gen_random_uuid(), $1, $2, 'oidc', NULL)
+		RETURNING id::text`,
+		userInfo.DisplayName, userInfo.Email).Scan(&userID)
+	if err != nil {
+		return "", err
+	}
+
+	// Create profile with photo URL if available
+	if userInfo.PhotoUrl != "" {
+		_, err = db.Exec(`
+			INSERT INTO user_profiles (user_id, profile_image_url)
+			VALUES ($1, $2)`, userID, userInfo.PhotoUrl)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return userID, nil
 }

@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { LogIn } from 'lucide-react'
+import { LogIn, Monitor } from 'lucide-react'
 
 function LoginPage() {
   const [error, setError] = useState('')
@@ -35,6 +35,11 @@ function LoginPage() {
     setLoading(false)
   }
 
+  const handleOIDCLogin = () => {
+    // Redirect to OIDC login endpoint
+    window.location.href = `${import.meta.env.VITE_API_URL || '/api'}/auth/oidc/login`
+  }
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
@@ -44,10 +49,10 @@ function LoginPage() {
           </div>
           <CardTitle className="text-2xl">ログイン</CardTitle>
           <p className="text-sm text-muted-foreground mt-2">
-            LINE WORKSアカウントでログインします
+            ログイン方法を選択してください
           </p>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           {error && (
             <Alert variant="destructive" className="mb-4">
               <AlertDescription>{error}</AlertDescription>
@@ -59,8 +64,30 @@ function LoginPage() {
             className="w-full"
             disabled={loading || !woffInitialized}
           >
-            {loading ? 'ログイン中...' : 'LINE WORKSでログイン'}
+            {loading ? 'ログイン中...' : 'LINE WORKSでログイン (スマホ)'}
           </Button>
+          
+          {/* PCブラウザOIDCログイン - 非表示
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">
+                または
+              </span>
+            </div>
+          </div>
+
+          <Button
+            onClick={handleOIDCLogin}
+            variant="outline"
+            className="w-full"
+          >
+            <Monitor className="mr-2 h-4 w-4" />
+            PCブラウザでログイン (OIDC)
+          </Button>
+          */}
           
           {!woffInitialized && (
             <p className="text-center text-sm text-muted-foreground mt-4">

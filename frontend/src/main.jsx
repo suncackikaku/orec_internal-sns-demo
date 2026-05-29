@@ -9,6 +9,7 @@ import DepartmentsListPage from './pages/DepartmentsListPage'
 import UsersListPage from './pages/UsersListPage'
 import UserProfilePage from './pages/UserProfilePage'
 import LoginPage from './pages/LoginPage'
+import OIDCCallbackPage from './pages/OIDCCallbackPage'
 import RegisterPage from './pages/RegisterPage'
 import ProfileEditPage from './pages/ProfileEditPage'
 import FeedPage from './pages/FeedPage'
@@ -53,6 +54,7 @@ function App() {
           <Routes>
             {/* Public routes */}
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/oidc/callback" element={<OIDCCallbackPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/admin/login" element={<AdminLoginPage />} />
             
