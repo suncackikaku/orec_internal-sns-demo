@@ -1345,7 +1345,9 @@ func getFeedHandler(w http.ResponseWriter, r *http.Request) {
 
 	err := db.Select(&posts, query, user.ID, perPage, offset)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Feed query error: %v", err)
+		log.Printf("Query: %s", query)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
