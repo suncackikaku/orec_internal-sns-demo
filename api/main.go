@@ -1253,20 +1253,7 @@ func getFeedHandler(w http.ResponseWriter, r *http.Request) {
 
 	query := `
 		SELECT 
-			p.id, p.author_id, u.display_name as author_name, p.body, p.tags, 
-			COALESCE((
-				SELECT array_agg(d.name) 
-				FROM post_department_tags pdt 
-				JOIN departments d ON pdt.department_id = d.id 
-				WHERE pdt.post_id = p.id
-			), ARRAY[]::text[]) as department_tags,
-			COALESCE((
-				SELECT array_agg(h.name) 
-				FROM post_hashtags ph 
-				JOIN hashtags h ON ph.hashtag_id = h.id 
-				WHERE ph.post_id = p.id
-			), ARRAY[]::text[]) as hashtags,
-			p.image_urls, p.visibility_type, p.created_at,
+			p.id, p.author_id, u.display_name as author_name, p.body, p.tags, p.image_urls, p.visibility_type, p.created_at,
 			COALESCE(up.profile_image_url, '') as author_image_url,
 			COALESCE(l.count, 0) as like_count,
 			COALESCE(c.count, 0) as comment_count,

@@ -23,27 +23,18 @@ function FeedPage() {
   const [editingPost, setEditingPost] = useState(null)
   const [editBody, setEditBody] = useState('')
   const [editLoading, setEditLoading] = useState(false)
-  const [selectedHashtag, setSelectedHashtag] = useState(null)
 
   useEffect(() => {
     fetchFeed()
-  }, [page, activeTab, selectedHashtag])
+  }, [page, activeTab])
 
   const fetchFeed = async () => {
     setLoading(true)
     try {
-      let res
-      if (selectedHashtag) {
-        // ハッシュタグ検索APIを使用
-        res = await fetch(`${API_URL}/search/hashtag?tag=${encodeURIComponent(selectedHashtag)}`, {
-          headers: getAuthHeaders()
-        })
-      } else {
-        const filterParam = activeTab === 'related' ? '&filter=related' : ''
-        res = await fetch(`${API_URL}/feed?page=${page}&per_page=20${filterParam}`, {
-          headers: getAuthHeaders()
-        })
-      }
+      const filterParam = activeTab === 'related' ? '&filter=related' : ''
+      const res = await fetch(`${API_URL}/feed?page=${page}&per_page=20${filterParam}`, {
+        headers: getAuthHeaders()
+      })
       if (res.ok) {
         const data = await res.json()
         setPosts(data || [])
@@ -239,21 +230,6 @@ function FeedPage() {
         <h1 className="text-2xl font-bold mb-4">フィード</h1>
         
         {/* タブ */}
-        {/* ハッシュタグフィルタ表示 */}
-        {selectedHashtag && (
-          <div className="flex items-center gap-2 mb-4 p-2 bg-green-50 rounded-lg">
-            <span className="text-sm text-green-700">
-              ハッシュタグ: <strong>#{selectedHashtag}</strong>
-            </span>
-            <button
-              onClick={() => setSelectedHashtag(null)}
-              className="text-sm text-green-600 hover:text-green-800 underline"
-            >
-              クリア
-            </button>
-          </div>
-        )}
-        
         <div className="flex mb-6 border-b border-border">
           <button
             onClick={() => setActiveTab('all')}
@@ -384,17 +360,9 @@ function FeedPage() {
                     {post.hashtags && post.hashtags.length > 0 && (
                       <div className="flex flex-wrap gap-1 mb-3">
                         {post.hashtags.map((tag, index) => (
-                          <button
-                            key={index}
-                            onClick={() => setSelectedHashtag(tag)}
-                            className={`text-xs px-2 py-1 rounded-full border transition-colors ${
-                              selectedHashtag === tag
-                                ? 'bg-primary text-primary-foreground border-primary'
-                                : 'text-green-600 border-green-300 hover:bg-green-50'
-                            }`}
-                          >
+                          <Badge key={index} variant="outline" className="text-xs text-green-600 border-green-300">
                             #{tag}
-                          </button>
+                          </Badge>
                         ))}
                       </div>
                     )}
