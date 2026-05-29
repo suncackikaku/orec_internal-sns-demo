@@ -1255,6 +1255,7 @@ func getFeedHandler(w http.ResponseWriter, r *http.Request) {
 		SELECT 
 			p.id, p.author_id, u.display_name as author_name, p.body, p.tags, 
 			COALESCE(array_agg(d.name) FILTER (WHERE d.name IS NOT NULL), ARRAY[]::text[]) as department_tags,
+			COALESCE(array_agg(h.name) FILTER (WHERE h.name IS NOT NULL), ARRAY[]::text[]) as hashtags,
 			p.image_urls, p.visibility_type, p.created_at,
 			COALESCE(up.profile_image_url, '') as author_image_url,
 			COALESCE(l.count, 0) as like_count,
@@ -1265,6 +1266,8 @@ func getFeedHandler(w http.ResponseWriter, r *http.Request) {
 		LEFT JOIN user_profiles up ON u.id = up.user_id
 		LEFT JOIN post_department_tags pdt ON p.id = pdt.post_id
 		LEFT JOIN departments d ON pdt.department_id = d.id
+		LEFT JOIN post_hashtags ph ON p.id = ph.post_id
+		LEFT JOIN hashtags h ON ph.hashtag_id = h.id
 		LEFT JOIN (
 			SELECT post_id, COUNT(*) as count 
 			FROM likes 
