@@ -100,6 +100,32 @@ export function AuthProvider({ children }) {
     }
   }
 
+  const loginWithEmail = async (email, password) => {
+    try {
+      const res = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email, password })
+      })
+
+      if (!res.ok) {
+        const error = await res.text()
+        throw new Error(error || 'ログインに失敗しました')
+      }
+
+      const data = await res.json()
+      localStorage.setItem('token', data.token)
+      setUser(data.user)
+      const needsDepartment = !data.user?.primary_department_id
+      return { success: true, needsDepartment }
+    } catch (err) {
+      console.error('Email login failed:', err)
+      return { success: false, error: err.message }
+    }
+  }
+
   const logout = () => {
     localStorage.removeItem('token')
     setUser(null)
@@ -115,6 +141,7 @@ export function AuthProvider({ children }) {
       user, 
       setUser,
       loginWithWoff, 
+      loginWithEmail,
       logout, 
       getAuthHeaders, 
       loading,

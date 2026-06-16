@@ -113,7 +113,8 @@ INSERT INTO users (id, display_name, email, password_hash, auth_provider, primar
 ('dddddddd-dddd-dddd-dddd-dddddddddddd', '田中美咲', 'tanaka@example.com', '\$2a\$10\$RV1yFBFcHJbWuAhJp3w9DuZ3dokyb4w5uulijerVuUG0n9tDxWcy6', 'local', '22222222-2222-2222-2222-222222222222'),
 ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', '高橋健太', 'takahashi@example.com', '\$2a\$10\$RV1yFBFcHJbWuAhJp3w9DuZ3dokyb4w5uulijerVuUG0n9tDxWcy6', 'local', '33333333-3333-3333-3333-333333333333'),
 ('ffffffff-ffff-ffff-ffff-ffffffffffff', '伊藤さくら', 'ito@example.com', '\$2a\$10\$RV1yFBFcHJbWuAhJp3w9DuZ3dokyb4w5uulijerVuUG0n9tDxWcy6', 'local', '11111111-1111-1111-1111-111111111111'),
-('77777777-7777-7777-7777-777777777777', '渡辺隆', 'watanabe@example.com', '\$2a\$10\$RV1yFBFcHJbWuAhJp3w9DuZ3dokyb4w5uulijerVuUG0n9tDxWcy6', 'local', '22222222-2222-2222-2222-222222222222');
+('77777777-7777-7777-7777-777777777777', '渡辺隆', 'watanabe@example.com', '\$2a\$10\$RV1yFBFcHJbWuAhJp3w9DuZ3dokyb4w5uulijerVuUG0n9tDxWcy6', 'local', '22222222-2222-2222-2222-222222222222'),
+('88888888-8888-8888-8888-888888888888', 'デモアカウント', 'demo@orec.co.jp', '\$2a\$10\$RV1yFBFcHJbWuAhJp3w9DuZ3dokyb4w5uulijerVuUG0n9tDxWcy6', 'local', '11111111-1111-1111-1111-111111111111');
 
 INSERT INTO user_profiles (user_id, bio, hobbies, skills, joined_year, career_history, profile_image_url) VALUES
 ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '技術の力で世界を変えたい', 'プログラミング、読書、登山', 'Go, React, Kubernetes, AWS', 2018, '2018年 新卒入社\n2019年 クラウド基盤構築プロジェクト参画\n2021年 技術開発部 リードエンジニア就任', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200'),
@@ -122,7 +123,8 @@ INSERT INTO user_profiles (user_id, bio, hobbies, skills, joined_year, career_hi
 ('dddddddd-dddd-dddd-dddd-dddddddddddd', '新しいことに挑戦し続けたい', 'ヨガ、読書、ボランティア', 'デジタルマーケティング、SNS運用、データ分析', 2019, '2019年 新卒入社\n2020年 デジタル推進室配属\n2021年 マーケティング部 スペシャリスト', 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200'),
 ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'データドリブンで意思決定を', 'マラソン、将棋、プログラミング', 'Python, SQL, 統計分析, Tableau', 2017, '2017年 新卒入社\n2018年 データ分析チーム創設\n2020年 AIプロジェクト立ち上げ\n2023年 マーケティング部 データサイエンティスト', 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200'),
 ('ffffffff-ffff-ffff-ffff-ffffffffffff', 'チームで最高のものを作る', 'ゲーム開発、イラスト、DIY', 'Rust, WebAssembly, GraphQL, Docker', 2021, '2021年 新卒入社\n2022年 新規サービス開発参画\n2023年 技術開発部 若手リーダー', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200'),
-('77777777-7777-7777-7777-777777777777', '信頼関係を大切にした営業を', '野球観戦、ファッション、カフェ巡り', 'アカウントマネジメント、プレゼン、英語', 2016, '2016年 新卒入社\n2018年 海外営業部配属\n2020年 営業部 シニアアカウントマネージャー', 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200');
+('77777777-7777-7777-7777-777777777777', '信頼関係を大切にした営業を', '野球観戦、ファッション、カフェ巡り', 'アカウントマネジメント、プレゼン、英語', 2016, '2016年 新卒入社\n2018年 海外営業部配属\n2020年 営業部 シニアアカウントマネージャー', 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200'),
+('88888888-8888-8888-8888-888888888888', 'デモ用アカウントです', 'プロトタイプ確認、デモ', '社内SNS, デモンストレーション', 2024, '2024年 デモアカウントとして作成', 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200');
 
 -- Update departments with manager_user_id
 UPDATE departments SET manager_user_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' WHERE id = '11111111-1111-1111-1111-111111111111';

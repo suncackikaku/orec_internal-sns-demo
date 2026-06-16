@@ -3,13 +3,17 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { LogIn, Monitor } from 'lucide-react'
+import { LogIn } from 'lucide-react'
 
 function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const { loginWithWoff, woffInitialized } = useAuth()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const { loginWithWoff, loginWithEmail, woffInitialized } = useAuth()
   const navigate = useNavigate()
 
   const handleWoffLogin = async () => {
@@ -35,9 +39,22 @@ function LoginPage() {
     setLoading(false)
   }
 
-  const handleOIDCLogin = () => {
-    // Redirect to OIDC login endpoint
-    window.location.href = `${import.meta.env.VITE_API_URL || '/api'}/auth/oidc/login`
+  const handleEmailLogin = async (e) => {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+
+    const result = await loginWithEmail(email, password)
+    if (result.success) {
+      if (result.needsDepartment) {
+        navigate('/select-department')
+      } else {
+        navigate('/')
+      }
+    } else {
+      setError(result.error || 'ログインに失敗しました')
+    }
+    setLoading(false)
   }
 
   return (
@@ -67,7 +84,6 @@ function LoginPage() {
             {loading ? 'ログイン中...' : 'LINE WORKSでログイン (スマホ)'}
           </Button>
           
-          {/* PCブラウザOIDCログイン - 非表示
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t" />
@@ -79,15 +95,40 @@ function LoginPage() {
             </div>
           </div>
 
-          <Button
-            onClick={handleOIDCLogin}
-            variant="outline"
-            className="w-full"
-          >
-            <Monitor className="mr-2 h-4 w-4" />
-            PCブラウザでログイン (OIDC)
-          </Button>
-          */}
+          <form onSubmit={handleEmailLogin} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">メールアドレス</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="demo@orec.co.jp"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password">パスワード</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="パスワード"
+                required
+              />
+            </div>
+
+            <Button
+              type="submit"
+              variant="outline"
+              className="w-full"
+              disabled={loading}
+            >
+              {loading ? 'ログイン中...' : 'ID/PASSWORDでログイン'}
+            </Button>
+          </form>
           
           {!woffInitialized && (
             <p className="text-center text-sm text-muted-foreground mt-4">
