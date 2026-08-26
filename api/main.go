@@ -2329,6 +2329,19 @@ func oidcCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// 以前 OIDC でログインしたユーザーには woff_id が入っていないため補完する。
+	// Bot 通知の宛先に必要。
+	if userInfo.UserID != "" {
+		if _, err := db.Exec(`
+			UPDATE users SET woff_id = $2
+			WHERE id = $1 AND (woff_id IS NULL OR woff_id = '')`,
+			user.ID, userInfo.UserID); err != nil {
+			// woff_id は UNIQUE。同じ人が WOFF 経由でも登録済みだと衝突する。
+			// ログインを止める理由はないので記録だけ残す。
+			log.Printf("failed to backfill woff_id for user %s: %v", user.ID, err)
+		}
+	}
+
 	// Generate token
 	token, err := oidcAuthenticator.GenerateToken(user)
 	if err != nil {
@@ -2361,11 +2374,14 @@ func oidcCallbackHandler(w http.ResponseWriter, r *http.Request) {
 
 func createOIDCUser(userInfo *auth.OIDCUserInfo) (string, error) {
 	var userID string
+	// woff_id には LINE WORKS のユーザーID（OIDC の sub）を入れる。
+	// Bot 通知の宛先に必要で、WOFF ログインと同じ値が入る。
+	// 空文字は UNIQUE 制約で衝突するため NULLIF で NULL に落とす。
 	err := db.QueryRow(`
-		INSERT INTO users (id, display_name, email, auth_provider, primary_department_id)
-		VALUES (gen_random_uuid(), $1, $2, 'oidc', NULL)
+		INSERT INTO users (id, display_name, email, auth_provider, woff_id, primary_department_id)
+		VALUES (gen_random_uuid(), $1, $2, 'oidc', NULLIF($3, ''), NULL)
 		RETURNING id::text`,
-		userInfo.DisplayName, userInfo.Email).Scan(&userID)
+		userInfo.DisplayName, userInfo.Email, userInfo.UserID).Scan(&userID)
 	if err != nil {
 		return "", err
 	}
