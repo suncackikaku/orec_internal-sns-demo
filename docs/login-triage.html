@@ -1,0 +1,349 @@
+<title>ログイン不具合 切り分けフロー</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<style>
+  :root {
+    --bg:        #F6F7F5;
+    --surface:   #FFFFFF;
+    --surface-2: #EEF1EE;
+    --ink:       #1B2422;
+    --ink-2:     #46534F;
+    --muted:     #6C7B76;
+    --line:      #DCE3DF;
+    --line-2:    #C6D0CB;
+    --accent:    #0F7A5A;
+    --accent-2:  #0B5C44;
+    --accent-sf: #E2EFE9;
+    --flag:      #B0651A;
+    --flag-sf:   #FAEEDF;
+
+    --f-display: "Zen Kaku Gothic New", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    --f-body:    "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    --f-mono:    "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:        #101614;
+      --surface:   #171F1D;
+      --surface-2: #1E2725;
+      --ink:       #E7EEEA;
+      --ink-2:     #B6C3BE;
+      --muted:     #8A9994;
+      --line:      #283330;
+      --line-2:    #3A4744;
+      --accent:    #52C79C;
+      --accent-2:  #7FD9B7;
+      --accent-sf: #16302A;
+      --flag:      #E0A263;
+      --flag-sf:   #32261A;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg:        #101614;
+    --surface:   #171F1D;
+    --surface-2: #1E2725;
+    --ink:       #E7EEEA;
+    --ink-2:     #B6C3BE;
+    --muted:     #8A9994;
+    --line:      #283330;
+    --line-2:    #3A4744;
+    --accent:    #52C79C;
+    --accent-2:  #7FD9B7;
+    --accent-sf: #16302A;
+    --flag:      #E0A263;
+    --flag-sf:   #32261A;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--f-body);
+    font-size: 15px;
+    line-height: 1.85;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .shell { max-width: 1000px; margin: 0 auto; padding: 0 24px 80px; }
+
+  header.masthead { padding: 52px 0 24px; border-bottom: 2px solid var(--ink); }
+  .eyebrow {
+    font-family: var(--f-mono);
+    font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--accent); margin: 0 0 12px;
+  }
+  h1 {
+    font-family: var(--f-display); font-weight: 900;
+    font-size: clamp(26px, 4.4vw, 38px); line-height: 1.24;
+    text-wrap: balance; margin: 0 0 12px;
+  }
+  .lede { font-size: 15.5px; color: var(--ink-2); max-width: 62ch; margin: 0; }
+
+  section { padding: 40px 0 4px; }
+  section + section { border-top: 1px solid var(--line); }
+
+  h2 {
+    font-family: var(--f-display); font-weight: 700; font-size: 20px;
+    margin: 0 0 6px; display: flex; align-items: baseline; gap: 11px;
+  }
+  h2 .num { font-family: var(--f-mono); font-size: 12px; font-weight: 400; color: var(--accent); }
+  .sub { color: var(--muted); font-size: 13.5px; max-width: 66ch; margin: 0 0 20px; }
+  p { max-width: 66ch; }
+
+  /* 図 */
+  figure { margin: 0; }
+  .fig-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    padding: 24px 20px;
+  }
+  svg { max-width: 100%; height: auto; display: block; margin: 0 auto; color: var(--ink); }
+  figcaption { font-size: 12.5px; color: var(--muted); margin-top: 10px; max-width: 70ch; }
+
+  svg .node      { fill: var(--surface); stroke: var(--line-2); }
+  svg .node-lead { fill: var(--surface-2); stroke: var(--line-2); }
+  svg .node-flag { fill: var(--flag-sf); stroke: var(--flag); }
+  svg .t         { font-family: var(--f-body); font-size: 12.5px; font-weight: 700; fill: var(--ink); }
+  svg .s         { font-family: var(--f-body); font-size: 10.5px; fill: var(--muted); }
+  svg .s-flag    { font-family: var(--f-body); font-size: 10.5px; fill: var(--flag); font-weight: 700; }
+  svg .t-flag    { font-family: var(--f-body); font-size: 12.5px; font-weight: 700; fill: var(--flag); }
+  svg .hdr       { font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; fill: var(--muted); }
+  svg .wire      { stroke: var(--line-2); fill: none; }
+
+  /* コピペ枠 */
+  .copy {
+    border: 1px solid var(--line); background: var(--surface);
+    padding: 16px 18px; margin: 10px 0 4px;
+    font-size: 14px; line-height: 1.95; white-space: pre-wrap;
+  }
+
+  /* 表 */
+  .scroller { overflow-x: auto; border: 1px solid var(--line); background: var(--surface); margin: 6px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; line-height: 1.7; min-width: 620px; }
+  th {
+    text-align: left; font-family: var(--f-display); font-weight: 700;
+    font-size: 11.5px; letter-spacing: .09em; color: var(--muted); text-transform: uppercase;
+    padding: 11px 14px; background: var(--surface-2); border-bottom: 1px solid var(--line); white-space: nowrap;
+  }
+  td { padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  code { font-family: var(--f-mono); font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border-radius: 2px; }
+
+  .chip {
+    display: inline-block; font-family: var(--f-mono); font-size: 10.5px;
+    letter-spacing: .06em; padding: 2px 7px; border-radius: 2px; white-space: nowrap;
+  }
+  .c-none { background: var(--accent-sf); color: var(--accent-2); }
+  .c-yes  { background: var(--flag-sf); color: var(--flag); }
+
+  pre.err {
+    font-family: var(--f-mono); font-size: 12.5px;
+    background: var(--surface-2); border: 1px solid var(--line);
+    padding: 13px 15px; overflow-x: auto; margin: 10px 0;
+  }
+
+  ul.plain { padding-left: 0; list-style: none; margin: 8px 0; display: grid; gap: 7px; }
+  ul.plain li { padding-left: 18px; position: relative; font-size: 14px; color: var(--ink-2); max-width: 68ch; }
+  ul.plain li::before { content: ""; position: absolute; left: 2px; top: .72em; width: 6px; height: 1px; background: var(--accent); }
+
+  footer {
+    margin-top: 44px; padding-top: 16px; border-top: 1px solid var(--line);
+    font-family: var(--f-mono); font-size: 11.5px; color: var(--muted);
+  }
+</style>
+
+<div class="shell">
+
+  <header class="masthead">
+    <p class="eyebrow">Triage / 2026-08-26</p>
+    <h1>ログイン不具合 切り分けフロー</h1>
+    <p class="lede">先方社屋でログインできなかった件。「スマホの LINE WORKS アプリ内から開いたか、PC のブラウザから開いたか」の一問で、対応が当社だけで完結するか、先方に作業を依頼することになるかが決まります。</p>
+  </header>
+
+  <section>
+    <h2><span class="num">01</span>切り分けフロー</h2>
+    <p class="sub">先方への確認は 1 回で済みます。左端が回答、中央が診断、右端が対応です。</p>
+
+    <figure>
+      <div class="fig-wrap">
+        <svg viewBox="0 0 940 556" role="img" aria-label="先方への確認結果から対応を決める切り分けフロー。4分岐のうち、先方に作業依頼が必要なのはスマホのLINE WORKSアプリ内でボタンが押せなかった場合の1本だけ。">
+          <defs>
+            <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--line-2)"/>
+            </marker>
+          </defs>
+
+          <!-- 列見出し -->
+          <text class="hdr" x="140" y="98">先方の回答</text>
+          <text class="hdr" x="366" y="98">診断</text>
+          <text class="hdr" x="662" y="98">対応</text>
+
+          <!-- 起点 -->
+          <rect class="node-lead" x="80" y="22" width="330" height="50" rx="3"/>
+          <text class="t" x="98" y="45">先方に確認</text>
+          <text class="s" x="98" y="62">「どこから開きましたか？」</text>
+
+          <!-- 縦の背骨 -->
+          <path class="wire" d="M 110 72 L 110 410"/>
+
+          <!-- ===== 行1: PCブラウザ ===== -->
+          <path class="wire" d="M 110 146 L 134 146" marker-end="url(#ah)"/>
+          <rect class="node" x="140" y="118" width="190" height="56" rx="3"/>
+          <text class="t" x="156" y="144">PC のブラウザ</text>
+          <text class="s" x="156" y="161">Chrome / Edge など</text>
+
+          <path class="wire" d="M 330 146 L 360 146" marker-end="url(#ah)"/>
+          <rect class="node" x="366" y="118" width="260" height="56" rx="3"/>
+          <text class="t" x="382" y="144">woff.login() の未実装</text>
+          <text class="s" x="382" y="161">テナントとは無関係。再現済み</text>
+
+          <path class="wire" d="M 626 146 L 656 146" marker-end="url(#ah)"/>
+          <rect class="node" x="662" y="118" width="258" height="56" rx="3"/>
+          <text class="t" x="678" y="144">当社でコード修正</text>
+          <text class="s" x="678" y="161">先方の作業なし・数行で完了</text>
+
+          <!-- ===== 行2: スマホ／押せない ===== -->
+          <path class="wire" d="M 110 234 L 134 234" marker-end="url(#ah)"/>
+          <rect class="node" x="140" y="206" width="190" height="56" rx="3"/>
+          <text class="t" x="156" y="230">スマホのアプリ内</text>
+          <text class="s" x="156" y="248">ボタンが押せなかった</text>
+
+          <path class="wire" d="M 330 234 L 360 234" marker-end="url(#ah)"/>
+          <rect class="node-flag" x="366" y="206" width="260" height="56" rx="3"/>
+          <text class="t-flag" x="382" y="230">woff.init() が失敗</text>
+          <text class="s-flag" x="382" y="248">別テナントのため利用できない</text>
+
+          <path class="wire" d="M 626 234 L 656 234" marker-end="url(#ah)"/>
+          <rect class="node-flag" x="662" y="206" width="258" height="56" rx="3"/>
+          <text class="t-flag" x="678" y="230">先方で WOFF アプリ登録</text>
+          <text class="s-flag" x="678" y="248">先方の作業あり・唯一のルート</text>
+
+          <!-- ===== 行3: スマホ／押せたがエラー ===== -->
+          <path class="wire" d="M 110 322 L 134 322" marker-end="url(#ah)"/>
+          <rect class="node" x="140" y="294" width="190" height="56" rx="3"/>
+          <text class="t" x="156" y="318">スマホのアプリ内</text>
+          <text class="s" x="156" y="336">押せたがエラーが出た</text>
+
+          <path class="wire" d="M 330 322 L 360 322" marker-end="url(#ah)"/>
+          <rect class="node" x="366" y="294" width="260" height="56" rx="3"/>
+          <text class="t" x="382" y="318">未特定</text>
+          <text class="s" x="382" y="336">エラー文言で原因が分かれる</text>
+
+          <path class="wire" d="M 626 322 L 656 322" marker-end="url(#ah)"/>
+          <rect class="node" x="662" y="294" width="258" height="56" rx="3"/>
+          <text class="t" x="678" y="318">エラー文言を取得して再判定</text>
+          <text class="s" x="678" y="336">先方には画面の確認のみ依頼</text>
+
+          <!-- ===== 行4: 不明 ===== -->
+          <path class="wire" d="M 110 410 L 134 410" marker-end="url(#ah)"/>
+          <rect class="node" x="140" y="382" width="190" height="56" rx="3"/>
+          <text class="t" x="156" y="406">不明・覚えていない</text>
+          <text class="s" x="156" y="424">確認が取れない</text>
+
+          <path class="wire" d="M 330 410 L 360 410" marker-end="url(#ah)"/>
+          <rect class="node" x="366" y="382" width="260" height="56" rx="3"/>
+          <text class="t" x="382" y="406">判定不能</text>
+          <text class="s" x="382" y="424">先に検証を進めてもらう</text>
+
+          <path class="wire" d="M 626 410 L 656 410" marker-end="url(#ah)"/>
+          <rect class="node" x="662" y="382" width="258" height="56" rx="3"/>
+          <text class="t" x="678" y="406">ID/PASSWORD で先に検証</text>
+          <text class="s" x="678" y="424">並行して woff.login() を実装</text>
+
+          <!-- 共通の足元 -->
+          <path class="wire" d="M 110 410 L 110 492 L 134 492" marker-end="url(#ah)"/>
+          <rect x="140" y="466" width="780" height="52" rx="3" fill="var(--accent-sf)" stroke="var(--accent)" stroke-dasharray="4 3"/>
+          <text class="t" x="158" y="490" fill="var(--accent-2)">どの分岐でも共通：ID/PASSWORD ログインは本番で稼働中</text>
+          <text class="s" x="158" y="508" fill="var(--accent-2)">demo@orec.co.jp が利用可能。LINE WORKS の解決を待たずにデモを進められる</text>
+        </svg>
+      </div>
+      <figcaption>4 つの分岐のうち、先方に作業が発生するのはオレンジの 1 本だけです。他の 3 本は当社側の対応で完結します。だからこそ、依頼を出す前に確認が必要です。</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2><span class="num">02</span>先方への確認文</h2>
+    <p class="sub">この 3 点だけ聞けば分岐が確定します。そのままコピーして使えます。</p>
+
+    <div class="copy">先日ご検証いただいた際のログインについて、3点確認させてください。
+
+1. アプリを開いたのは、スマートフォンの LINE WORKS アプリの中からでしょうか。
+   それとも PC のブラウザ（Chrome / Edge など）からでしょうか。
+
+2. 「LINE WORKSでログイン (スマホ)」のボタンは押せる状態でしたか。
+   （グレーアウトして押せなかった場合は、その旨をお知らせください）
+
+3. エラーメッセージが表示された場合、文言をそのままお知らせください。
+   画面のスクリーンショットでも構いません。
+
+なお、画面下部の「ID/PASSWORDでログイン」からは現在もログイン可能です。
+LINE WORKS 連携の調査と並行して、そちらでご検証を進めていただけます。
+アカウント情報は別途お送りします。</div>
+
+    <p style="margin-top:18px">デモアカウントの認証情報は、このメールとは別の経路で渡してください。</p>
+  </section>
+
+  <section>
+    <h2><span class="num">03</span>分岐ごとの作業内容</h2>
+    <div class="scroller">
+      <table>
+        <thead>
+          <tr><th>分岐</th><th>先方の作業</th><th>当社の作業</th><th>所要</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>PC のブラウザ</td>
+            <td><span class="chip c-none">なし</span></td>
+            <td><code>woff.isLoggedIn()</code> と <code>woff.login()</code> の分岐を追加し、ログイン後に <code>woff.init()</code> を再実行</td>
+            <td class="nowrap">半日</td>
+          </tr>
+          <tr>
+            <td>スマホ／押せなかった</td>
+            <td><span class="chip c-yes">あり</span> 自社テナントで WOFF アプリを登録し、WOFF ID を共有</td>
+            <td>受け取った ID を <code>VITE_WOFF_ID</code> に設定して再ビルド</td>
+            <td class="nowrap">先方次第</td>
+          </tr>
+          <tr>
+            <td>スマホ／エラー</td>
+            <td><span class="chip c-none">確認のみ</span></td>
+            <td>エラー文言から再判定。<code>woff.init()</code> の失敗理由を画面に出す改修も検討</td>
+            <td class="nowrap">要調査</td>
+          </tr>
+          <tr>
+            <td>不明</td>
+            <td><span class="chip c-none">確認のみ</span></td>
+            <td><code>woff.login()</code> を先に実装（どの分岐でも必要になる）</td>
+            <td class="nowrap">半日</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-top:16px"><code>woff.login()</code> の実装は、分岐 2 が正解だった場合でも無駄になりません。PC ブラウザ対応として必要な修正なので、確認を待つ間に着手して問題ありません。</p>
+  </section>
+
+  <section>
+    <h2><span class="num">04</span>診断の根拠</h2>
+    <p class="sub">本番環境（<code>orec-demo-app.suncac.net</code>）で実際に再現した結果です。</p>
+
+    <p>当社の PC ブラウザから「LINE WORKSでログイン (スマホ)」を押すと、次のエラーが表示されます。</p>
+    <pre class="err">Need access_token for api call, Please login first</pre>
+
+    <ul class="plain">
+      <li>これは <b>当社のテナント環境で</b> 出たエラーです。テナントの違いとは無関係に、PC ブラウザからであれば誰が押しても同じ結果になります。</li>
+      <li>LINE WORKS 公式ドキュメントに <code>woff.login()</code> は「外部ブラウザ環境で WOFF アプリを実行する際に必須」と明記されており、実行後は <code>woff.init()</code> の再実行が必要とされています。現在のコードはこの手順を踏んでいません。</li>
+      <li>一方、スマホの LINE WORKS アプリ内であればログイン済みのため <code>getProfile()</code> は通ります。そこで失敗する場合は、テナントの問題である可能性が高くなります。</li>
+      <li>ログイン画面には ID/PASSWORD フォームが既に存在し、<code>demo@orec.co.jp</code> のデモアカウントも投入済みです（2026-06-16 のコミットで追加、本番反映済み）。</li>
+    </ul>
+  </section>
+
+  <footer>
+    docs/login-triage.html · feature/local-dev の実装と本番環境の実測に基づく · 2026-08-26
+  </footer>
+
+</div>
