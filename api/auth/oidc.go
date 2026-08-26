@@ -235,6 +235,56 @@ func (a *OIDCAuthenticator) GetUserInfo(accessToken string) (*OIDCUserInfo, erro
 	return &userInfo, nil
 }
 
+// ParseIDToken は id_token のクレームからユーザー情報を取り出す。
+//
+// users/me（worksapis.com）を叩く GetUserInfo は Works API 側のスコープが
+// 別途必要で、付与されていないと FORBIDDEN / has not permission api scope になる。
+// id_token は openid email profile の範囲で既に取得できているため、
+// 追加の権限を要求せずに済むこちらを使う。
+//
+// 署名検証は行わない。id_token を token エンドポイントから TLS 経由で
+// 直接受け取っており（client_secret による認証済み）、OIDC Core 3.1.3.7 が
+// 認めるケースに該当する。第三者経由で id_token を受け取る作りに変える場合は
+// 署名検証が必須になる。
+func (a *OIDCAuthenticator) ParseIDToken(idToken string) (*OIDCUserInfo, error) {
+	parts := strings.Split(idToken, ".")
+	if len(parts) < 2 {
+		return nil, fmt.Errorf("id_token の形式が不正です")
+	}
+
+	payload, err := base64.RawURLEncoding.DecodeString(strings.TrimRight(parts[1], "="))
+	if err != nil {
+		return nil, fmt.Errorf("id_token のペイロードを復号できません: %w", err)
+	}
+
+	var claims struct {
+		Sub     string `json:"sub"`
+		Email   string `json:"email"`
+		Name    string `json:"name"`
+		Picture string `json:"picture"`
+	}
+	if err := json.Unmarshal(payload, &claims); err != nil {
+		return nil, fmt.Errorf("id_token のクレームを解釈できません: %w", err)
+	}
+
+	if claims.Email == "" {
+		return nil, fmt.Errorf("id_token に email が含まれていません")
+	}
+
+	// users.display_name は NOT NULL のため、name が無い場合の代替を用意する
+	displayName := claims.Name
+	if displayName == "" {
+		displayName = strings.Split(claims.Email, "@")[0]
+	}
+
+	return &OIDCUserInfo{
+		UserID:      claims.Sub,
+		DisplayName: displayName,
+		Email:       claims.Email,
+		PhotoUrl:    claims.Picture,
+	}, nil
+}
+
 // AuthenticateOIDCUser authenticates a user with OIDC credentials
 func (a *OIDCAuthenticator) AuthenticateOIDCUser(userInfo *OIDCUserInfo) (*User, error) {
 	// Check if user exists by email (OIDC users are identified by email)

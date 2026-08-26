@@ -2295,10 +2295,11 @@ func oidcCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get user info using access token
-	userInfo, err := oidcAuthenticator.GetUserInfo(tokenResp.AccessToken)
+	// id_token からユーザー情報を取る。
+	// users/me API は Works API スコープが別途必要になるため使わない。
+	userInfo, err := oidcAuthenticator.ParseIDToken(tokenResp.IDToken)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to get user info: %v", err), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("Failed to read id_token: %v", err), http.StatusInternalServerError)
 		return
 	}
 
