@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -21,6 +22,25 @@ import (
 var (
 	ErrOIDCAuthFailed = errors.New("oidc authentication failed")
 )
+
+// FlexInt は JSON の数値と文字列の両方を受けられる整数。
+// LINE WORKS の token エンドポイントは expires_in を "86400" のような
+// 文字列で返すため、int で受けると復号時に失敗する。
+type FlexInt int
+
+func (f *FlexInt) UnmarshalJSON(b []byte) error {
+	s := strings.Trim(string(b), `"`)
+	if s == "" || s == "null" {
+		*f = 0
+		return nil
+	}
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		return fmt.Errorf("expires_in を数値として解釈できません: %s", s)
+	}
+	*f = FlexInt(n)
+	return nil
+}
 
 // OIDCAuthenticator handles OIDC authentication for PC browsers
 type OIDCAuthenticator struct {
@@ -48,7 +68,7 @@ type PKCEData struct {
 type OIDCTokenResponse struct {
 	AccessToken  string `json:"access_token"`
 	TokenType    string `json:"token_type"`
-	ExpiresIn    int    `json:"expires_in"`
+	ExpiresIn    FlexInt `json:"expires_in"`
 	RefreshToken string `json:"refresh_token"`
 	IDToken      string `json:"id_token"`
 }

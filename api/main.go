@@ -231,6 +231,25 @@ var activityChannel = make(chan Activity, 100)
 var activityClients = make(map[chan Activity]bool)
 var activityClientsMutex sync.Mutex
 
+// GetOIDCUserByEmail は OIDC で作成されたユーザーを email で引く。
+// GetUserByEmail は auth_provider = 'local' で絞るため、
+// auth_provider = 'oidc' のユーザーは引けず、2回目のログインで
+// 再作成を試みて email の UNIQUE 制約に衝突する。
+func (d *DBAuth) GetOIDCUserByEmail(email string) (*auth.User, error) {
+	var user auth.User
+	err := d.db.Get(&user, `
+		SELECT id, display_name, email, primary_department_id
+		FROM users
+		WHERE email = $1 AND auth_provider = 'oidc'`, email)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, auth.ErrUserNotFound
+		}
+		return nil, err
+	}
+	return &user, nil
+}
+
 func (d *DBAuth) GetUserByWoffID(woffID string) (*auth.User, error) {
 	var user auth.User
 	err := d.db.Get(&user, `
@@ -2286,7 +2305,7 @@ func oidcCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	dbAuth := &DBAuth{db: db}
 
 	// Check if user exists
-	user, err := dbAuth.GetUserByEmail(userInfo.Email)
+	user, err := dbAuth.GetOIDCUserByEmail(userInfo.Email)
 	if err != nil {
 		if err == auth.ErrUserNotFound {
 			// Create new OIDC user
