@@ -20,6 +20,10 @@ function OIDCCallbackPage() {
 
     // Store token and fetch user info
     localStorage.setItem('token', token)
+
+    // トークンを URL から即座に取り除く。
+    // ブラウザ履歴や Referer 経由での露出を減らす。
+    window.history.replaceState({}, '', '/oidc/callback')
     
     const fetchUser = async () => {
       try {
