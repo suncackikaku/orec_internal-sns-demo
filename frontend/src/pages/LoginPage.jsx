@@ -105,27 +105,32 @@ function LoginPage() {
             </Alert>
           )}
 
-          {/* スマホの LINE WORKS アプリ内から使う経路 */}
-          {!woffError && (
-            <Button
-              onClick={handleWoffLogin}
-              className="w-full"
-              disabled={loading || woffPending}
-            >
-              {loading ? 'ログイン中...' : 'LINE WORKSでログイン (スマホ)'}
-            </Button>
-          )}
-
-          {/* PC ブラウザから使う経路 */}
+          {/* OIDC。PC・スマホのブラウザ、LINE WORKS アプリ内のいずれでも動く */}
           {oidcAvailable && (
             <Button
               onClick={handleOidcLogin}
-              variant="outline"
               className="w-full"
               disabled={loading}
             >
-              LINE WORKSでログイン (PCブラウザ)
+              LINE WORKS アカウントでログイン
             </Button>
+          )}
+
+          {/* WOFF。LINE WORKS アプリ内で WOFF URL から開いた場合にのみ成立する */}
+          {!woffError && (
+            <div className="space-y-1">
+              <Button
+                onClick={handleWoffLogin}
+                variant="outline"
+                className="w-full"
+                disabled={loading || woffPending}
+              >
+                {loading ? 'ログイン中...' : 'LINE WORKS アプリで続ける'}
+              </Button>
+              <p className="text-xs text-muted-foreground text-center">
+                LINE WORKS アプリ内で専用リンクから開いた場合のみ利用できます
+              </p>
+            </div>
           )}
 
           {/* WOFF が使えない環境（他テナント・SDK未読込）への案内 */}
