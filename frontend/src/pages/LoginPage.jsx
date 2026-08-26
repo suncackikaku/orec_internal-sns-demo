@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { Button } from '@/components/ui/button'
@@ -8,22 +8,32 @@ import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { LogIn } from 'lucide-react'
 
+const API_URL = import.meta.env.VITE_API_URL || '/api'
+
 function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showWoffDetail, setShowWoffDetail] = useState(false)
-  const {
-    loginWithWoff,
-    loginWithEmail,
-    woffInitialized,
-    woffError,
-    woffLoginPending,
-    clearWoffPending
-  } = useAuth()
+  const [oidcAvailable, setOidcAvailable] = useState(false)
+  const { loginWithWoff, loginWithEmail, woffInitialized, woffError } = useAuth()
   const navigate = useNavigate()
-  const autoResumed = useRef(false)
+
+  // OIDC はサーバー側の環境変数が揃っていないと 503 を返す。
+  // 未設定のまま「PCでログイン」を出しても失敗するだけなので、
+  // 使える場合にだけボタンを表示する。
+  useEffect(() => {
+    let alive = true
+    fetch(`${API_URL}/auth/oidc/login`, { redirect: 'manual' })
+      .then((res) => {
+        if (alive) setOidcAvailable(res.status !== 503)
+      })
+      .catch(() => {
+        // ネットワークエラー時はボタンを出さない
+      })
+    return () => { alive = false }
+  }, [])
 
   const goAfterLogin = (result) => {
     if (result.needsDepartment) {
@@ -52,21 +62,13 @@ function LoginPage() {
     setLoading(false)
   }
 
-  // woff.login() のリダイレクトから戻ってきた場合、続きを自動で流す。
-  // ユーザーにボタンをもう一度押させないため。
-  useEffect(() => {
-    if (woffInitialized && woffLoginPending && !autoResumed.current) {
-      autoResumed.current = true
-      handleWoffLogin()
-    }
-  }, [woffInitialized, woffLoginPending])
-
-  // 初期化に失敗した状態で pending が残っていると復帰できないため落とす
-  useEffect(() => {
-    if (woffError && woffLoginPending) {
-      clearWoffPending()
-    }
-  }, [woffError, woffLoginPending])
+  // OIDC はサーバーが LINE WORKS の認可画面へリダイレクトするため、
+  // fetch ではなくページ遷移で開始する。
+  const handleOidcLogin = () => {
+    setError('')
+    setLoading(true)
+    window.location.href = `${API_URL}/auth/oidc/login`
+  }
 
   const handleEmailLogin = async (e) => {
     e.preventDefault()
@@ -103,13 +105,26 @@ function LoginPage() {
             </Alert>
           )}
 
+          {/* スマホの LINE WORKS アプリ内から使う経路 */}
           {!woffError && (
             <Button
               onClick={handleWoffLogin}
               className="w-full"
               disabled={loading || woffPending}
             >
-              {loading ? 'ログイン中...' : 'LINE WORKSでログイン'}
+              {loading ? 'ログイン中...' : 'LINE WORKSでログイン (スマホ)'}
+            </Button>
+          )}
+
+          {/* PC ブラウザから使う経路 */}
+          {oidcAvailable && (
+            <Button
+              onClick={handleOidcLogin}
+              variant="outline"
+              className="w-full"
+              disabled={loading}
+            >
+              LINE WORKSでログイン (PCブラウザ)
             </Button>
           )}
 
@@ -117,7 +132,8 @@ function LoginPage() {
           {woffError && (
             <div className="rounded-md border border-border bg-muted/50 p-3 space-y-2">
               <p className="text-sm text-muted-foreground">
-                この環境ではLINE WORKSログインを利用できません。下のメールアドレスでログインしてください。
+                この環境ではスマホ向けのLINE WORKSログインを利用できません。
+                下のメールアドレスでログインしてください。
               </p>
               <button
                 type="button"
