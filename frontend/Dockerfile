@@ -6,6 +6,12 @@ COPY package*.json ./
 RUN npm install
 
 COPY . .
+
+# テナントごとに WOFF ID を差し替えられるようにする。
+# 未指定なら AuthContext.jsx のフォールバック（サンカク企画テナントの ID）が使われる。
+ARG VITE_WOFF_ID
+ENV VITE_WOFF_ID=$VITE_WOFF_ID
+
 RUN npm run build
 
 FROM nginx:alpine

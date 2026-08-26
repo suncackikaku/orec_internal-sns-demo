@@ -42,6 +42,7 @@ services:
       dockerfile: Dockerfile
       args:
         - VITE_API_URL=/api
+        - VITE_WOFF_ID=${VITE_WOFF_ID:-}
     container_name: sns-frontend
     ports:
       - "80:80"

@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
-const WOFF_ID = 'kJAM8fCbiHyzK75Hi9y5bQ'
+const WOFF_ID = import.meta.env.VITE_WOFF_ID || 'kJAM8fCbiHyzK75Hi9y5bQ'
 
 const AuthContext = createContext(null)
 
@@ -9,32 +9,39 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [woffInitialized, setWoffInitialized] = useState(false)
+  const [woffError, setWoffError] = useState('')
 
   useEffect(() => {
-    // Initialize WOFF
-    if (typeof woff !== 'undefined') {
-      woff.init({ woffId: WOFF_ID })
-        .then(() => {
-          console.log('WOFF initialized successfully')
-          setWoffInitialized(true)
-          
-          // Check if already logged in
-          const token = localStorage.getItem('token')
-          if (token) {
-            fetchUser(token)
-          } else {
-            setLoading(false)
-          }
-        })
-        .catch((err) => {
-          console.error('WOFF initialization failed:', err)
-          setLoading(false)
-        })
+    // セッション復元は WOFF の成否と切り離す。
+    // WOFF が使えない環境（他テナント / LINE WORKS 外のブラウザ）でも
+    // メールログインしたセッションを維持する必要があるため。
+    const token = localStorage.getItem('token')
+    if (token) {
+      fetchUser(token)
     } else {
-      console.error('WOFF SDK not loaded')
       setLoading(false)
     }
+
+    initWoff()
   }, [])
+
+  const initWoff = () => {
+    if (typeof woff === 'undefined') {
+      setWoffError('LINE WORKS の SDK を読み込めませんでした。LINE WORKS アプリ外で開いているか、ネットワークが static.worksmobile.net を許可していない可能性があります。')
+      return
+    }
+
+    woff.init({ woffId: WOFF_ID })
+      .then(() => {
+        console.log('WOFF initialized successfully')
+        setWoffInitialized(true)
+      })
+      .catch((err) => {
+        console.error('WOFF initialization failed:', err)
+        // WOFF アプリは発行元テナント専用のため、別テナントのメンバーはここで失敗する。
+        setWoffError(`LINE WORKS の初期化に失敗しました（WOFF ID: ${WOFF_ID}）。${err?.message || err}`)
+      })
+  }
 
   const fetchUser = async (token) => {
     try {
@@ -95,6 +102,33 @@ export function AuthProvider({ children }) {
     }
   }
 
+  const loginWithEmail = async (email, password) => {
+    try {
+      const res = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email, password })
+      })
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          return { success: false, error: 'メールアドレスまたはパスワードが違います' }
+        }
+        return { success: false, error: 'ログインに失敗しました。時間をおいて再度お試しください。' }
+      }
+
+      const data = await res.json()
+      localStorage.setItem('token', data.token)
+      setUser(data.user)
+      return { success: true }
+    } catch (err) {
+      console.error('Email login failed:', err)
+      return { success: false, error: 'サーバーに接続できませんでした' }
+    }
+  }
+
   const logout = () => {
     localStorage.removeItem('token')
     setUser(null)
@@ -106,13 +140,15 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      loginWithWoff, 
-      logout, 
-      getAuthHeaders, 
+    <AuthContext.Provider value={{
+      user,
+      loginWithWoff,
+      loginWithEmail,
+      logout,
+      getAuthHeaders,
       loading,
-      woffInitialized 
+      woffInitialized,
+      woffError
     }}>
       {children}
     </AuthContext.Provider>

@@ -1,0 +1,866 @@
+<title>社内SNSデモ 現況仕様書</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<style>
+  :root {
+    --bg:        #F6F7F5;
+    --surface:   #FFFFFF;
+    --surface-2: #EEF1EE;
+    --ink:       #1B2422;
+    --ink-2:     #46534F;
+    --muted:     #6C7B76;
+    --line:      #DCE3DF;
+    --line-2:    #C6D0CB;
+    --accent:    #0F7A5A;
+    --accent-2:  #0B5C44;
+    --accent-sf: #E2EFE9;
+    --crit:      #B3402F;
+    --crit-sf:   #F7E6E2;
+    --warn:      #96631F;
+    --warn-sf:   #F7EEDD;
+    --ok:        #2F7A4F;
+    --ok-sf:     #E4F0E8;
+
+    --f-display: "Zen Kaku Gothic New", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    --f-body:    "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    --f-mono:    "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:        #101614;
+      --surface:   #171F1D;
+      --surface-2: #1E2725;
+      --ink:       #E7EEEA;
+      --ink-2:     #B6C3BE;
+      --muted:     #8A9994;
+      --line:      #283330;
+      --line-2:    #3A4744;
+      --accent:    #52C79C;
+      --accent-2:  #7FD9B7;
+      --accent-sf: #16302A;
+      --crit:      #E8836F;
+      --crit-sf:   #331F1B;
+      --warn:      #D9A85C;
+      --warn-sf:   #302719;
+      --ok:        #6BC28F;
+      --ok-sf:     #1A2E22;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg:        #101614;
+    --surface:   #171F1D;
+    --surface-2: #1E2725;
+    --ink:       #E7EEEA;
+    --ink-2:     #B6C3BE;
+    --muted:     #8A9994;
+    --line:      #283330;
+    --line-2:    #3A4744;
+    --accent:    #52C79C;
+    --accent-2:  #7FD9B7;
+    --accent-sf: #16302A;
+    --crit:      #E8836F;
+    --crit-sf:   #331F1B;
+    --warn:      #D9A85C;
+    --warn-sf:   #302719;
+    --ok:        #6BC28F;
+    --ok-sf:     #1A2E22;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--f-body);
+    font-size: 15px;
+    line-height: 1.85;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .shell {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 24px 96px;
+  }
+
+  /* ---------- 刊記 ---------- */
+
+  .masthead {
+    padding: 56px 0 28px;
+    border-bottom: 2px solid var(--ink);
+  }
+  .eyebrow {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 14px;
+  }
+  .masthead h1 {
+    font-family: var(--f-display);
+    font-weight: 900;
+    font-size: clamp(30px, 5vw, 46px);
+    line-height: 1.22;
+    letter-spacing: .01em;
+    text-wrap: balance;
+    margin: 0 0 14px;
+  }
+  .lede {
+    font-size: 16px;
+    color: var(--ink-2);
+    max-width: 62ch;
+    margin: 0;
+  }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 32px;
+    padding: 18px 0 0;
+    font-family: var(--f-mono);
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .meta b {
+    color: var(--ink-2);
+    font-weight: 500;
+  }
+
+  /* ---------- 2カラム ---------- */
+
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  @media (min-width: 1000px) {
+    .layout { grid-template-columns: 196px minmax(0, 1fr); gap: 56px; }
+    .rail { display: block; }
+  }
+
+  .rail { display: none; }
+  .rail nav {
+    position: sticky;
+    top: 24px;
+    padding: 44px 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .rail a {
+    font-size: 13px;
+    color: var(--muted);
+    text-decoration: none;
+    padding: 4px 0 4px 12px;
+    border-left: 2px solid var(--line);
+    transition: color .15s, border-color .15s;
+  }
+  .rail a:hover, .rail a:focus-visible {
+    color: var(--accent);
+    border-left-color: var(--accent);
+  }
+  .rail .rail-num {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    color: var(--line-2);
+    margin-right: 7px;
+  }
+
+  /* ---------- セクション ---------- */
+
+  section { padding: 44px 0 8px; scroll-margin-top: 20px; }
+  section + section { border-top: 1px solid var(--line); }
+
+  h2 {
+    font-family: var(--f-display);
+    font-weight: 700;
+    font-size: 22px;
+    letter-spacing: .01em;
+    margin: 0 0 6px;
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+  h2 .num {
+    font-family: var(--f-mono);
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--accent);
+  }
+  h3 {
+    font-family: var(--f-display);
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: .02em;
+    margin: 34px 0 10px;
+    color: var(--ink);
+  }
+  .sub {
+    color: var(--muted);
+    font-size: 13.5px;
+    max-width: 68ch;
+    margin: 0 0 22px;
+  }
+  p { max-width: 68ch; }
+
+  /* ---------- 数値タイル ---------- */
+
+  .tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    margin: 26px 0 4px;
+  }
+  .tile { background: var(--surface); padding: 18px 18px 16px; }
+  .tile .v {
+    font-family: var(--f-display);
+    font-weight: 700;
+    font-size: 27px;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+    color: var(--accent);
+  }
+  .tile .k {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 5px;
+  }
+
+  /* ---------- 表 ---------- */
+
+  .scroller {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    margin: 4px 0 8px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    line-height: 1.65;
+    min-width: 560px;
+  }
+  th {
+    text-align: left;
+    font-family: var(--f-display);
+    font-weight: 700;
+    font-size: 11.5px;
+    letter-spacing: .09em;
+    color: var(--muted);
+    text-transform: uppercase;
+    padding: 11px 14px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+  }
+  td {
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  tr:last-child td { border-bottom: none; }
+  td code, td .path { font-family: var(--f-mono); font-size: 12.5px; }
+  .nowrap { white-space: nowrap; }
+
+  /* ---------- チップ ---------- */
+
+  .chip {
+    display: inline-block;
+    font-family: var(--f-mono);
+    font-size: 10.5px;
+    letter-spacing: .06em;
+    padding: 2px 7px;
+    border-radius: 2px;
+    white-space: nowrap;
+    line-height: 1.6;
+  }
+  .c-get    { background: var(--accent-sf); color: var(--accent-2); }
+  .c-post   { background: var(--ok-sf);   color: var(--ok); }
+  .c-put    { background: var(--warn-sf); color: var(--warn); }
+  .c-del    { background: var(--crit-sf); color: var(--crit); }
+  .c-sse    { background: var(--surface-2); color: var(--ink-2); }
+  .c-done   { background: var(--ok-sf);   color: var(--ok); }
+  .c-none   { background: var(--warn-sf); color: var(--warn); }
+  .c-risk   { background: var(--crit-sf); color: var(--crit); }
+  .c-open   { background: var(--surface-2); color: var(--muted); }
+
+  /* ---------- 図 ---------- */
+
+  figure { margin: 8px 0 4px; }
+  .fig-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    padding: 22px 20px;
+  }
+  figcaption {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 9px;
+    font-family: var(--f-mono);
+  }
+  svg text { font-family: var(--f-body); }
+  svg .lbl { font-family: var(--f-mono); font-size: 10px; fill: var(--muted); }
+  svg .box-t { font-size: 13px; font-weight: 700; fill: var(--ink); }
+  svg .box-s { font-size: 10.5px; fill: var(--muted); font-family: var(--f-mono); }
+  svg .col   { font-size: 10.5px; fill: var(--ink-2); font-family: var(--f-mono); }
+
+  /* ---------- 所見カード ---------- */
+
+  .findings { display: flex; flex-direction: column; gap: 1px; background: var(--line); border: 1px solid var(--line); }
+  .finding { background: var(--surface); padding: 16px 18px; display: grid; gap: 6px; }
+  .finding .hd { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .finding .ttl { font-family: var(--f-display); font-weight: 700; font-size: 14.5px; }
+  .finding .where { font-family: var(--f-mono); font-size: 11.5px; color: var(--muted); }
+  .finding p { margin: 0; font-size: 13.5px; color: var(--ink-2); max-width: 74ch; }
+  .finding .fix { font-size: 13px; color: var(--ink); border-left: 2px solid var(--accent); padding-left: 11px; }
+  .finding .fix b { font-family: var(--f-display); font-size: 11px; letter-spacing: .1em; color: var(--accent); display: block; }
+
+  ul.plain { padding-left: 0; list-style: none; margin: 8px 0; display: grid; gap: 7px; }
+  ul.plain li { padding-left: 18px; position: relative; font-size: 14px; color: var(--ink-2); max-width: 70ch; }
+  ul.plain li::before { content: ""; position: absolute; left: 2px; top: .72em; width: 6px; height: 1px; background: var(--accent); }
+
+  pre {
+    font-family: var(--f-mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    padding: 14px 16px;
+    overflow-x: auto;
+    margin: 10px 0;
+  }
+  p code, li code { font-family: var(--f-mono); font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border-radius: 2px; }
+
+  a { color: var(--accent-2); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  footer {
+    margin-top: 48px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+    font-family: var(--f-mono);
+    font-size: 11.5px;
+    color: var(--muted);
+  }
+</style>
+
+<div class="shell">
+
+  <header class="masthead">
+    <p class="eyebrow">Project Overview / 2026-08-26</p>
+    <h1>社内SNSデモ 現況仕様書</h1>
+    <p class="lede">LINE WORKS（WOFF）連携を前提とした社内限定SNSのデモアプリケーション。React + Go + PostgreSQL を Docker Compose で 3 コンテナ構成、ConoHa VPS 上で稼働中。本書はリポジトリ実装から起こした現時点の仕様と、README との乖離・未実装領域をまとめたもの。</p>
+    <div class="meta">
+      <span>repo <b>suncackikaku/orec_internal-sns-demo</b></span>
+      <span>branch <b>main</b></span>
+      <span>HEAD <b>a84d0d1</b></span>
+      <span>本番 <b>orec-demo-app.suncac.net</b></span>
+    </div>
+  </header>
+
+  <div class="layout">
+
+    <aside class="rail">
+      <nav>
+        <a href="#s1"><span class="rail-num">01</span>サマリー</a>
+        <a href="#s2"><span class="rail-num">02</span>システム構成</a>
+        <a href="#s3"><span class="rail-num">03</span>技術スタック</a>
+        <a href="#s4"><span class="rail-num">04</span>画面とルーティング</a>
+        <a href="#s5"><span class="rail-num">05</span>API 仕様</a>
+        <a href="#s6"><span class="rail-num">06</span>データモデル</a>
+        <a href="#s7"><span class="rail-num">07</span>認証フロー</a>
+        <a href="#s8"><span class="rail-num">08</span>デプロイと運用</a>
+        <a href="#s9"><span class="rail-num">09</span>実装状況の棚卸し</a>
+        <a href="#s10"><span class="rail-num">10</span>セキュリティ所見</a>
+        <a href="#s11"><span class="rail-num">11</span>次アクション候補</a>
+      </nav>
+    </aside>
+
+    <main>
+
+      <!-- 01 -->
+      <section id="s1">
+        <h2><span class="num">01</span>サマリー</h2>
+        <p class="sub">社員が互いの人となりを知るための社内向けSNS。部署紹介・社員プロフィール・フォロー・いいね・フィード・全文検索・リアルタイムお知らせ（SSE）までが動作する。認証は LINE WORKS のミニアプリ基盤 WOFF に依存し、ブラウザ単体では利用できない構成。</p>
+
+        <div class="tiles">
+          <div class="tile"><div class="v">9</div><div class="k">画面（ルート）</div></div>
+          <div class="tile"><div class="v">22</div><div class="k">API エンドポイント</div></div>
+          <div class="tile"><div class="v">7</div><div class="k">DB テーブル</div></div>
+          <div class="tile"><div class="v">1,097</div><div class="k">api/main.go 行数</div></div>
+          <div class="tile"><div class="v">3</div><div class="k">Docker サービス</div></div>
+        </div>
+
+        <h3>いま押さえておくべき 3 点</h3>
+        <ul class="plain">
+          <li><b>投稿を作る手段が存在しない。</b> <code>posts</code> テーブルへの書き込み API も UI も未実装で、表示される投稿は <code>db/init.sql</code> のシード 7 件のみ。フィード・いいね・投稿検索はすべてこの固定データの上で動いている。</li>
+          <li><b>README と実装がずれている。</b> README は「メール／パスワードでログイン」と書くが、現在のログイン画面は LINE WORKS ボタンのみ。<code>/api/auth/login</code> と <code>/api/auth/register</code> は UI から到達できないデッドコードとして残存している。</li>
+          <li><b>WOFF 認証にサーバー側検証がない。</b> フロントから送られた <code>userId</code> をそのまま信頼してログイン／ユーザー作成しており、任意のユーザーになりすませる。詳細は <a href="#s10">10. セキュリティ所見</a>。</li>
+        </ul>
+      </section>
+
+      <!-- 02 -->
+      <section id="s2">
+        <h2><span class="num">02</span>システム構成</h2>
+        <p class="sub">Docker Compose の 3 サービス。ブラウザからは 80 番の Nginx のみが窓口で、<code>/api</code> は Nginx がコンテナ内の Go API へリバースプロキシする。API の 8080 もホストに公開されているため、Nginx を経由しない直接アクセス経路も開いている。</p>
+
+        <figure>
+          <div class="fig-wrap">
+            <svg viewBox="0 0 900 330" width="900" height="330" role="img" aria-label="システム構成図">
+              <defs>
+                <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--line-2)"/>
+                </marker>
+              </defs>
+
+              <!-- LINE WORKS client -->
+              <rect x="10" y="96" width="150" height="86" fill="var(--surface-2)" stroke="var(--line-2)"/>
+              <text class="box-t" x="85" y="130" text-anchor="middle">LINE WORKS</text>
+              <text class="box-s" x="85" y="150" text-anchor="middle">アプリ内ブラウザ</text>
+              <text class="box-s" x="85" y="166" text-anchor="middle">WOFF SDK 3.6</text>
+
+              <!-- compose frame -->
+              <rect x="215" y="18" width="530" height="292" fill="none" stroke="var(--line)" stroke-dasharray="4 4"/>
+              <text class="lbl" x="225" y="36">docker-compose · ConoHa VPS</text>
+
+              <!-- frontend -->
+              <rect x="240" y="96" width="150" height="86" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.5"/>
+              <text class="box-t" x="315" y="126" text-anchor="middle">frontend</text>
+              <text class="box-s" x="315" y="145" text-anchor="middle">nginx:alpine</text>
+              <text class="box-s" x="315" y="161" text-anchor="middle">静的配信 + /api proxy</text>
+              <text class="lbl" x="315" y="196" text-anchor="middle">:80</text>
+
+              <!-- api -->
+              <rect x="450" y="96" width="150" height="86" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.5"/>
+              <text class="box-t" x="525" y="126" text-anchor="middle">api</text>
+              <text class="box-s" x="525" y="145" text-anchor="middle">Go 1.21 · chi</text>
+              <text class="box-s" x="525" y="161" text-anchor="middle">JWT / SSE</text>
+              <text class="lbl" x="525" y="196" text-anchor="middle">:8080</text>
+
+              <!-- db -->
+              <rect x="655" y="96" width="72" height="86" fill="var(--surface)" stroke="var(--line-2)"/>
+              <text class="box-t" x="691" y="130" text-anchor="middle" font-size="12">db</text>
+              <text class="box-s" x="691" y="150" text-anchor="middle" font-size="9.5">postgres</text>
+              <text class="box-s" x="691" y="164" text-anchor="middle" font-size="9.5">15-alpine</text>
+              <text class="lbl" x="691" y="196" text-anchor="middle">:5433→5432</text>
+
+              <!-- LW API -->
+              <rect x="450" y="245" width="150" height="52" fill="var(--surface-2)" stroke="var(--line-2)" stroke-dasharray="3 3"/>
+              <text class="box-t" x="525" y="268" text-anchor="middle" font-size="12">worksapis.com</text>
+              <text class="box-s" x="525" y="285" text-anchor="middle">※ 現状は未呼び出し</text>
+
+              <!-- arrows -->
+              <line x1="163" y1="139" x2="234" y2="139" stroke="var(--line-2)" marker-end="url(#ar)"/>
+              <text class="lbl" x="198" y="130" text-anchor="middle">HTTPS</text>
+              <line x1="393" y1="139" x2="444" y2="139" stroke="var(--line-2)" marker-end="url(#ar)"/>
+              <text class="lbl" x="418" y="130" text-anchor="middle">/api</text>
+              <line x1="603" y1="139" x2="650" y2="139" stroke="var(--line-2)" marker-end="url(#ar)"/>
+              <text class="lbl" x="626" y="130" text-anchor="middle">sqlx</text>
+              <line x1="525" y1="185" x2="525" y2="241" stroke="var(--line-2)" stroke-dasharray="3 3" marker-end="url(#ar)"/>
+
+              <!-- direct 8080 -->
+              <path d="M 85 96 L 85 60 L 525 60 L 525 92" fill="none" stroke="var(--crit)" stroke-dasharray="4 3" marker-end="url(#ar)"/>
+              <text class="lbl" x="305" y="52" text-anchor="middle" fill="var(--crit)">8080 直アクセスも開放（CORS は全許可）</text>
+            </svg>
+          </div>
+          <figcaption>docker-compose.yml / frontend/nginx.conf より作図</figcaption>
+        </figure>
+      </section>
+
+      <!-- 03 -->
+      <section id="s3">
+        <h2><span class="num">03</span>技術スタック</h2>
+        <div class="scroller">
+          <table>
+            <thead>
+              <tr><th>層</th><th>採用技術</th><th>備考</th></tr>
+            </thead>
+            <tbody>
+              <tr><td class="nowrap">フロント</td><td>React 18 / Vite 5 / React Router 6</td><td>JSX（TypeScript 設定はあるが実装は .jsx）</td></tr>
+              <tr><td class="nowrap">UI</td><td>Tailwind CSS 3 + shadcn/ui（Radix UI）</td><td>button / card / avatar / select / item など 10 コンポーネント</td></tr>
+              <tr><td class="nowrap">演出</td><td>@formkit/auto-animate, lucide-react</td><td>お知らせリストの差分アニメーション</td></tr>
+              <tr><td class="nowrap">API</td><td>Go 1.21 / chi v5 / sqlx / lib&#8203;/pq</td><td>単一パッケージ <code>main</code> + <code>auth</code> サブパッケージ</td></tr>
+              <tr><td class="nowrap">認証</td><td>golang-jwt v5（HS256, 24h）/ bcrypt</td><td>WOFF SDK 3.6 を index.html で読み込み</td></tr>
+              <tr><td class="nowrap">DB</td><td>PostgreSQL 15（uuid-ossp）</td><td>初期化は <code>db/init.sql</code> 一括投入</td></tr>
+              <tr><td class="nowrap">配信</td><td>Nginx alpine（マルチステージビルド）</td><td>SPA フォールバック + /api プロキシ</td></tr>
+              <tr><td class="nowrap">インフラ</td><td>Docker Compose 3.8 / ConoHa VPS</td><td>更新は <code>deploy.sh</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 04 -->
+      <section id="s4">
+        <h2><span class="num">04</span>画面とルーティング</h2>
+        <p class="sub"><code>/login</code> と <code>/register</code> 以外はすべて <code>PrivateRoute</code> でガードされ、未ログインなら <code>/login</code> へリダイレクトする。判定はクライアント側の <code>AuthContext</code> だが、データ取得側の API も JWT を要求するため実質二重で守られている（部署系 3 エンドポイントを除く）。</p>
+        <div class="scroller">
+          <table>
+            <thead>
+              <tr><th>パス</th><th>コンポーネント</th><th>認証</th><th>主な機能</th></tr>
+            </thead>
+            <tbody>
+              <tr><td class="path">/login</td><td>LoginPage</td><td><span class="chip c-open">公開</span></td><td>LINE WORKS ログインボタンのみ</td></tr>
+              <tr><td class="path">/register</td><td>RegisterPage</td><td><span class="chip c-open">公開</span></td><td>ログイン画面への誘導のみ（登録処理なし）</td></tr>
+              <tr><td class="path">/</td><td>WelcomePage</td><td><span class="chip c-done">要JWT</span></td><td>自分のアイコン／横断検索／クイックメニュー／一言メッセージ／お知らせ（SSE）</td></tr>
+              <tr><td class="path">/feed</td><td>FeedPage</td><td><span class="chip c-done">要JWT</span></td><td>自分＋フォロー中の投稿、いいねトグル、ページング</td></tr>
+              <tr><td class="path">/departments</td><td>DepartmentsListPage</td><td><span class="chip c-done">要JWT</span></td><td>部署カード一覧（カバー画像・キャッチコピー）</td></tr>
+              <tr><td class="path">/departments/:id</td><td>DepartmentPage</td><td><span class="chip c-done">要JWT</span></td><td>部署詳細。メンバー／フィードのタブ切替</td></tr>
+              <tr><td class="path">/users</td><td>UsersListPage</td><td><span class="chip c-done">要JWT</span></td><td>社員グリッド、部署フィルタ、キーワード検索、ページネーション</td></tr>
+              <tr><td class="path">/users/:id/profile</td><td>UserProfilePage</td><td><span class="chip c-done">要JWT</span></td><td>プロフィール表示、フォロー／解除、自分なら編集・ログアウト導線</td></tr>
+              <tr><td class="path">/users/me/profile/edit</td><td>ProfileEditPage</td><td><span class="chip c-done">要JWT</span></td><td>一言／趣味／得意なこと／経歴／画像URL の編集</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 05 -->
+      <section id="s5">
+        <h2><span class="num">05</span>API 仕様</h2>
+        <p class="sub">ベースパスは <code>/api</code>。保護ルートは chi の <code>Group</code> + <code>authMiddleware</code> でまとめて JWT 必須。トークンは <code>Authorization: Bearer</code> ヘッダ、SSE のみクエリ <code>?token=</code> にフォールバックする。</p>
+
+        <h3>公開エンドポイント</h3>
+        <div class="scroller">
+          <table>
+            <thead><tr><th>メソッド</th><th>パス</th><th>概要</th></tr></thead>
+            <tbody>
+              <tr><td><span class="chip c-post">POST</span></td><td class="path">/api/auth/register</td><td>メール／パスワードで新規登録。<b>UI から到達不能</b></td></tr>
+              <tr><td><span class="chip c-post">POST</span></td><td class="path">/api/auth/login</td><td>メール／パスワードでログイン。<b>UI から到達不能</b></td></tr>
+              <tr><td><span class="chip c-post">POST</span></td><td class="path">/api/auth/woff</td><td>WOFF プロフィールでログイン。未登録なら自動作成</td></tr>
+              <tr><td><span class="chip c-get">GET</span></td><td class="path">/api/departments</td><td>部署一覧</td></tr>
+              <tr><td><span class="chip c-get">GET</span></td><td class="path">/api/departments/{deptId}</td><td>部署 + メンバー + その部署の投稿</td></tr>
+              <tr><td><span class="chip c-get">GET</span></td><td class="path">/api/users/{userId}/profile</td><td>拡張プロフィール（部署名を JOIN 済み）</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>保護エンドポイント（JWT 必須）</h3>
+        <div class="scroller">
+          <table>
+            <thead><tr><th>メソッド</th><th>パス</th><th>概要</th></tr></thead>
+            <tbody>
+              <tr><td><span class="chip c-get">GET</span></td><td class="path">/api/auth/me</td><td>トークンのクレームから現在ユーザーを返す</td></tr>
+              <tr><td><span class="chip c-put">PUT</span></td><td class="path">/api/users/me/profile</td><td>自分のプロフィール更新。更新時にお知らせを生成</td></tr>
+              <tr><td><span class="chip c-get">GET</span></td><td class="path">/api/search?q=</td><td>社員・部署・投稿の横断検索（各最大 10 件）</td></tr>
+              <tr><td><span class="chip c-get">GET</span></td><td class="path">/api/users</td><td>社員一覧。<code>page</code> / <code>per_page</code>(既定12) / <code>department_id</code> / <code>q</code></td></tr>
+              <tr><td><span class="chip c-get">GET</span></td><td class="path">/api/activities</td><td>お知らせ直近 10 件</td></tr>
+              <tr><td><span class="chip c-sse">SSE</span></td><td class="path">/api/activities/stream</td><td>お知らせのプッシュ配信。接続時に直近 10 件を先出し</td></tr>
+              <tr><td><span class="chip c-post">POST</span></td><td class="path">/api/users/{userId}/follow</td><td>フォロー</td></tr>
+              <tr><td><span class="chip c-del">DELETE</span></td><td class="path">/api/users/{userId}/follow</td><td>フォロー解除</td></tr>
+              <tr><td><span class="chip c-get">GET</span></td><td class="path">/api/users/{userId}/followers</td><td>フォロワー一覧</td></tr>
+              <tr><td><span class="chip c-get">GET</span></td><td class="path">/api/users/{userId}/following</td><td>フォロー中一覧</td></tr>
+              <tr><td><span class="chip c-get">GET</span></td><td class="path">/api/users/{userId}/is-following</td><td>フォロー状態の判定</td></tr>
+              <tr><td><span class="chip c-post">POST</span></td><td class="path">/api/posts/{postId}/like</td><td>いいね</td></tr>
+              <tr><td><span class="chip c-del">DELETE</span></td><td class="path">/api/posts/{postId}/like</td><td>いいね解除</td></tr>
+              <tr><td><span class="chip c-get">GET</span></td><td class="path">/api/posts/{postId}/likes</td><td>いいねしたユーザー一覧</td></tr>
+              <tr><td><span class="chip c-get">GET</span></td><td class="path">/api/posts/{postId}/is-liked</td><td>いいね状態の判定</td></tr>
+              <tr><td><span class="chip c-get">GET</span></td><td class="path">/api/feed</td><td>自分＋フォロー中の投稿。いいね数・自分のいいね状態を同梱</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>お知らせ（activities）が発火する契機</h3>
+        <ul class="plain">
+          <li><code>user_registered</code> — ローカル登録時、および WOFF 初回ログインでユーザーが自動作成されたとき</li>
+          <li><code>profile_update</code> — プロフィール更新時</li>
+          <li>生成された activity は DB に保存され、同時に接続中の全 SSE クライアントへブロードキャストされる（<code>activityClients</code> マップ + mutex）</li>
+        </ul>
+      </section>
+
+      <!-- 06 -->
+      <section id="s6">
+        <h2><span class="num">06</span>データモデル</h2>
+        <p class="sub">主キーはすべて UUID。<code>users.updated_at</code> はトリガー <code>update_updated_at_column()</code> で自動更新。<code>followers</code> と <code>likes</code> は複合 UNIQUE 制約で二重登録を防いでいる。</p>
+
+        <figure>
+          <div class="fig-wrap">
+            <svg viewBox="0 0 900 470" width="900" height="470" role="img" aria-label="ER図">
+              <!-- departments -->
+              <rect x="20" y="30" width="180" height="80" fill="var(--surface)" stroke="var(--line-2)"/>
+              <rect x="20" y="30" width="180" height="24" fill="var(--accent-sf)"/>
+              <text class="box-t" x="32" y="47" font-size="12">departments</text>
+              <text class="col" x="32" y="72">id · name · catchcopy</text>
+              <text class="col" x="32" y="88">description</text>
+              <text class="col" x="32" y="104">cover_image_url</text>
+
+              <!-- users -->
+              <rect x="330" y="20" width="200" height="122" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.5"/>
+              <rect x="330" y="20" width="200" height="24" fill="var(--accent-sf)"/>
+              <text class="box-t" x="342" y="37" font-size="12">users</text>
+              <text class="col" x="342" y="62">id · display_name</text>
+              <text class="col" x="342" y="78">email · password_hash</text>
+              <text class="col" x="342" y="94">auth_provider (local|woff)</text>
+              <text class="col" x="342" y="110">woff_id · domain_id</text>
+              <text class="col" x="342" y="126">primary_department_id</text>
+
+              <!-- user_profiles -->
+              <rect x="670" y="30" width="200" height="96" fill="var(--surface)" stroke="var(--line-2)"/>
+              <rect x="670" y="30" width="200" height="24" fill="var(--accent-sf)"/>
+              <text class="box-t" x="682" y="47" font-size="12">user_profiles</text>
+              <text class="col" x="682" y="72">user_id (PK/FK)</text>
+              <text class="col" x="682" y="88">bio · hobbies · skills</text>
+              <text class="col" x="682" y="104">joined_year</text>
+              <text class="col" x="682" y="120">career_history · image</text>
+
+              <!-- activities -->
+              <rect x="20" y="250" width="180" height="80" fill="var(--surface)" stroke="var(--line-2)"/>
+              <rect x="20" y="250" width="180" height="24" fill="var(--surface-2)"/>
+              <text class="box-t" x="32" y="267" font-size="12">activities</text>
+              <text class="col" x="32" y="292">id · actor_id</text>
+              <text class="col" x="32" y="308">type · message</text>
+              <text class="col" x="32" y="324">created_at</text>
+
+              <!-- posts -->
+              <rect x="330" y="250" width="200" height="64" fill="var(--surface)" stroke="var(--line-2)"/>
+              <rect x="330" y="250" width="200" height="24" fill="var(--surface-2)"/>
+              <text class="box-t" x="342" y="267" font-size="12">posts</text>
+              <text class="col" x="342" y="292">id · author_id</text>
+              <text class="col" x="342" y="308">body · created_at</text>
+
+              <!-- followers -->
+              <rect x="670" y="250" width="200" height="80" fill="var(--surface)" stroke="var(--line-2)"/>
+              <rect x="670" y="250" width="200" height="24" fill="var(--surface-2)"/>
+              <text class="box-t" x="682" y="267" font-size="12">followers</text>
+              <text class="col" x="682" y="292">follower_id</text>
+              <text class="col" x="682" y="308">following_id</text>
+              <text class="col" x="682" y="324">UNIQUE(両者)</text>
+
+              <!-- likes -->
+              <rect x="330" y="390" width="200" height="64" fill="var(--surface)" stroke="var(--line-2)"/>
+              <rect x="330" y="390" width="200" height="24" fill="var(--surface-2)"/>
+              <text class="box-t" x="342" y="407" font-size="12">likes</text>
+              <text class="col" x="342" y="432">user_id · post_id</text>
+              <text class="col" x="342" y="448">UNIQUE(両者)</text>
+
+              <!-- relations -->
+              <line x1="203" y1="70" x2="327" y2="70" stroke="var(--line-2)"/>
+              <text class="lbl" x="265" y="62" text-anchor="middle">1 : N</text>
+
+              <line x1="533" y1="70" x2="667" y2="70" stroke="var(--line-2)"/>
+              <text class="lbl" x="600" y="62" text-anchor="middle">1 : 1</text>
+
+              <line x1="430" y1="145" x2="430" y2="247" stroke="var(--line-2)"/>
+              <text class="lbl" x="440" y="200">1 : N author</text>
+
+              <path d="M 327 100 L 250 100 L 250 290 L 203 290" fill="none" stroke="var(--line-2)"/>
+              <text class="lbl" x="258" y="200">1 : N actor</text>
+
+              <path d="M 533 100 L 620 100 L 620 290 L 667 290" fill="none" stroke="var(--line-2)"/>
+              <text class="lbl" x="628" y="200">N : N</text>
+
+              <line x1="430" y1="317" x2="430" y2="387" stroke="var(--line-2)"/>
+              <text class="lbl" x="440" y="356">1 : N post</text>
+
+              <path d="M 327 130 L 290 130 L 290 422 L 327 422" fill="none" stroke="var(--line-2)"/>
+              <text class="lbl" x="296" y="360">1 : N user</text>
+            </svg>
+          </div>
+          <figcaption>db/init.sql · db/migration_add_woff_columns.sql より作図</figcaption>
+        </figure>
+
+        <h3>インデックス</h3>
+        <ul class="plain">
+          <li><code>idx_followers_following</code> / <code>idx_followers_follower</code> — フィードのフォロー解決用</li>
+          <li><code>idx_likes_post</code> / <code>idx_likes_user</code> — いいね集計用</li>
+          <li><code>idx_users_woff_id</code> — WOFF ログイン時のユーザー引き当て用</li>
+        </ul>
+
+        <h3>シードデータ</h3>
+        <p>部署 6 件、ユーザー 7 名（全員 <code>password123</code> の bcrypt ハッシュ、<code>auth_provider = 'local'</code>）、プロフィール 7 件、投稿 7 件。カバー画像・プロフィール画像はすべて Unsplash の外部 URL を直接参照している。</p>
+      </section>
+
+      <!-- 07 -->
+      <section id="s7">
+        <h2><span class="num">07</span>認証フロー</h2>
+        <p class="sub">起動時に <code>AuthContext</code> が WOFF SDK を初期化し、<code>localStorage</code> のトークンがあれば <code>/api/auth/me</code> で復元する。SDK が読み込めない環境（通常のブラウザ）では初期化に失敗し、ログインボタンが押せないまま止まる。</p>
+
+        <pre>1.  index.html    WOFF SDK (static.worksmobile.net/.../3.6/sdk.js) を読み込み
+2.  AuthContext   woff.init({ woffId: 'kJAM8fCbiHyzK75Hi9y5bQ' })
+3.  LoginPage     「LINE WORKSでログイン」→ woff.getProfile()
+4.  POST /api/auth/woff   { userId, displayName, domainId }
+5.  API           woff_id で users を検索
+                    ├ 見つかる  → そのユーザーで続行
+                    └ 見つからない → users + user_profiles を新規作成
+                                      activities に user_registered を記録 → SSE 配信
+6.  API           HS256 / 24h の JWT を発行して返却
+7.  Frontend      localStorage['token'] に保存、以降 Authorization: Bearer で送信</pre>
+
+        <ul class="plain">
+          <li>WOFF ID <code>kJAM8fCbiHyzK75Hi9y5bQ</code> は <code>AuthContext.jsx</code> にハードコードされている（秘匿値ではないが環境変数化が望ましい）。</li>
+          <li>WOFF 経由で作成されたユーザーの email は <code>{userId}@lineworks</code> という合成値、<code>primary_department_id</code> は <code>NULL</code>。部署を割り当てる手段は現状ない。</li>
+          <li><code>auth/woff.go</code> に <code>GetAccessToken()</code> / <code>VerifyWoffUser()</code> が実装済みだが、<b>どこからも呼ばれていない</b>。</li>
+          <li><code>authMiddleware</code> は JWT のクレームからユーザー情報を組み立てるだけで DB 照合しない。ユーザー削除後もトークン有効期限内は通る。</li>
+        </ul>
+      </section>
+
+      <!-- 08 -->
+      <section id="s8">
+        <h2><span class="num">08</span>デプロイと運用</h2>
+        <div class="scroller">
+          <table>
+            <thead><tr><th>項目</th><th>内容</th></tr></thead>
+            <tbody>
+              <tr><td class="nowrap">配置先</td><td><code>/opt/sns-app</code>（ConoHa VPS · Ubuntu）</td></tr>
+              <tr><td class="nowrap">公開ポート</td><td>80（frontend）· 8080（api）· 5433（db → コンテナ内 5432）</td></tr>
+              <tr><td class="nowrap">更新手順</td><td><code>./deploy.sh</code>：バックアップ → down → git pull → build --no-cache → up -d → ヘルスチェック</td></tr>
+              <tr><td class="nowrap">ヘルスチェック</td><td>専用エンドポイントはなく <code>GET /api/departments</code> と <code>HEAD /</code> で代用</td></tr>
+              <tr><td class="nowrap">DB 初期化</td><td>初回のみ <code>init.sql</code> が自動実行。以降はボリューム <code>db_data</code> を保持</td></tr>
+              <tr><td class="nowrap">HTTPS</td><td>ホスト側 Nginx + Let's Encrypt（DEPLOY.md に手順記載）</td></tr>
+              <tr><td class="nowrap">環境変数</td><td><code>.env</code>（gitignore 済み）：<code>JWT_SECRET</code> / <code>LINE_WORKS_CLIENT_ID</code> / <code>CLIENT_SECRET</code> / <code>BASE_URL</code> / <code>DATABASE_URL</code> / <code>PORT</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p style="margin-top:18px">Go だけを直したときは <code>docker-compose build --no-cache api &amp;&amp; docker-compose up -d api</code> で API コンテナだけ入れ替えられる。フロントも触った場合は frontend の再ビルドが必要。</p>
+      </section>
+
+      <!-- 09 -->
+      <section id="s9">
+        <h2><span class="num">09</span>実装状況の棚卸し</h2>
+        <div class="scroller">
+          <table>
+            <thead><tr><th>機能</th><th>状態</th><th>補足</th></tr></thead>
+            <tbody>
+              <tr><td>WOFF ログイン／自動ユーザー作成</td><td><span class="chip c-done">実装済</span></td><td>ただしサーバー側検証なし</td></tr>
+              <tr><td>部署一覧・部署詳細（メンバー／フィード）</td><td><span class="chip c-done">実装済</span></td><td>閲覧のみ</td></tr>
+              <tr><td>社員一覧（フィルタ・検索・ページング）</td><td><span class="chip c-done">実装済</span></td><td>1 ページ 12 件</td></tr>
+              <tr><td>プロフィール表示・編集</td><td><span class="chip c-done">実装済</span></td><td>画像は URL 入力方式</td></tr>
+              <tr><td>フォロー／フォロワー</td><td><span class="chip c-done">実装済</span></td><td></td></tr>
+              <tr><td>いいね</td><td><span class="chip c-done">実装済</span></td><td>対象はシード投稿のみ</td></tr>
+              <tr><td>フィード（自分＋フォロー中）</td><td><span class="chip c-done">実装済</span></td><td></td></tr>
+              <tr><td>横断検索（社員・部署・投稿）</td><td><span class="chip c-done">実装済</span></td><td>ILIKE の部分一致</td></tr>
+              <tr><td>お知らせのリアルタイム配信（SSE）</td><td><span class="chip c-done">実装済</span></td><td>登録・プロフィール更新の 2 契機</td></tr>
+              <tr><td><b>投稿の作成・編集・削除</b></td><td><span class="chip c-none">未実装</span></td><td>API も UI もなし。最大の欠落</td></tr>
+              <tr><td>コメント・返信</td><td><span class="chip c-none">未実装</span></td><td>テーブルも未定義</td></tr>
+              <tr><td>画像アップロード</td><td><span class="chip c-none">未実装</span></td><td>外部 URL の直接指定のみ</td></tr>
+              <tr><td>部署の作成・編集</td><td><span class="chip c-none">未実装</span></td><td>init.sql の 6 件固定</td></tr>
+              <tr><td>WOFF ユーザーへの部署割り当て</td><td><span class="chip c-none">未実装</span></td><td>NULL のまま</td></tr>
+              <tr><td>メール／パスワードログイン UI</td><td><span class="chip c-none">撤去済</span></td><td>API のみ残存。README の記述は古い</td></tr>
+              <tr><td>通知の既読管理</td><td><span class="chip c-none">未実装</span></td><td>直近 10 件を出すだけ</td></tr>
+              <tr><td>自動テスト</td><td><span class="chip c-none">未実装</span></td><td>Go・フロントとも 0 件</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 10 -->
+      <section id="s10">
+        <h2><span class="num">10</span>セキュリティ所見</h2>
+
+        <h3>守れている点</h3>
+        <ul class="plain">
+          <li>SQL はすべてプレースホルダ（<code>$1</code>）でパラメータ化。ILIKE 検索や動的 WHERE 組み立ても引数は分離されており、文字列連結は列名・演算子のみ。</li>
+          <li>保護ルートは chi の <code>Group</code> + <code>authMiddleware</code> でサーバー側強制。クライアントの <code>PrivateRoute</code> だけに依存していない。</li>
+          <li>パスワードは bcrypt（DefaultCost）でハッシュ化。JWT は HS256 / 24 時間で失効。</li>
+          <li><code>.env</code> は <code>.gitignore</code> 済み。フロントの <code>VITE_</code> 変数は API パス（<code>/api</code>）のみで、秘匿値のバンドル混入なし。</li>
+        </ul>
+
+        <h3>要対応</h3>
+        <div class="findings">
+
+          <div class="finding">
+            <div class="hd">
+              <span class="chip c-risk">CRITICAL</span>
+              <span class="ttl">WOFF 認証でなりすましができる</span>
+              <span class="where">api/main.go:1055</span>
+            </div>
+            <p>フロントから送られた <code>userId</code> / <code>displayName</code> / <code>domainId</code> を一切検証せずに DB 照合し、未登録なら新規作成して JWT を発行している。<code>curl</code> で任意の <code>userId</code> を POST すれば、他社員として、あるいは架空の社員としてログインできる。<code>auth/woff.go</code> の <code>VerifyWoffUser()</code> は実装されているが呼ばれていない。</p>
+            <div class="fix"><b>対応</b>フロントから <code>woff.getAccessToken()</code> のトークンを送り、サーバーで LINE WORKS API に問い合わせて <code>userId</code> を確定してから認証する。検証が通らないリクエストは 401 で落とす。</div>
+          </div>
+
+          <div class="finding">
+            <div class="hd">
+              <span class="chip c-risk">HIGH</span>
+              <span class="ttl">JWT_SECRET のフォールバックがハードコード</span>
+              <span class="where">api/main.go:227</span>
+            </div>
+            <p>環境変数が未設定でも <code>"your-secret-key-change-in-production"</code> で起動してしまう。<code>.env</code> の設定漏れに気付けず、既定鍵のまま本番稼働するとトークンを自由に偽造される。</p>
+            <div class="fix"><b>対応</b>未設定なら <code>log.Fatal</code> で起動を止める。あわせて 32 文字以上を要求する。</div>
+          </div>
+
+          <div class="finding">
+            <div class="hd">
+              <span class="chip c-risk">HIGH</span>
+              <span class="ttl">ビルド済みバイナリがリポジトリにコミットされている</span>
+              <span class="where">api/api · api/main.exe（各 11MB）</span>
+            </div>
+            <p><code>.gitignore</code> に <code>api/api</code> があるが、追加済みファイルには効かず追跡され続けている。<code>main.exe</code> は無視設定にも入っていない。合計 22MB がリポジトリを膨らませているうえ、ビルド時の環境情報や埋め込み文字列が公開される。</p>
+            <div class="fix"><b>対応</b><code>git rm --cached api/api api/main.exe</code> のうえ <code>.gitignore</code> に <code>api/main.exe</code> を追加する。</div>
+          </div>
+
+          <div class="finding">
+            <div class="hd">
+              <span class="chip c-risk">MEDIUM</span>
+              <span class="ttl">CORS が全オリジン許可</span>
+              <span class="where">api/main.go:237</span>
+            </div>
+            <p><code>AllowedOrigins: ["*"]</code> かつ <code>AllowedHeaders: ["*"]</code>。8080 がホストに直接公開されているため、任意のサイトのスクリプトから API を叩ける。認証はトークン方式なので即時の情報漏洩にはならないが、防御層としては空いている。</p>
+            <div class="fix"><b>対応</b>本番ドメイン（<code>https://orec-demo-app.suncac.net</code>）に限定し、8080 の公開自体も Nginx 経由に絞ることを検討する。</div>
+          </div>
+
+          <div class="finding">
+            <div class="hd">
+              <span class="chip c-risk">MEDIUM</span>
+              <span class="ttl">DB 認証情報が docker-compose.yml に直書き</span>
+              <span class="where">docker-compose.yml:8-10</span>
+            </div>
+            <p><code>snsuser</code> / <code>snspassword</code> がリポジトリに平文で入っている。5433 がホストに公開されているため、VPS のファイアウォール設定次第では外部から直接接続を試みられる。</p>
+            <div class="fix"><b>対応</b><code>.env</code> 参照（<code>${POSTGRES_PASSWORD}</code>）に変更し、パスワードをローテーションする。5433 の公開ポートは開発時のみに限定する。</div>
+          </div>
+
+          <div class="finding">
+            <div class="hd">
+              <span class="chip c-risk">LOW</span>
+              <span class="ttl">SSE のトークンをクエリ文字列で送信</span>
+              <span class="where">api/main.go:293 / WelcomePage.jsx:38</span>
+            </div>
+            <p><code>EventSource</code> がヘッダを付けられないための回避策だが、JWT が Nginx のアクセスログ・Referer・ブラウザ履歴に残る。</p>
+            <div class="fix"><b>対応</b>SSE 用に短命の使い捨てトークンを発行するか、Nginx 側で当該パスのクエリをログから落とす。</div>
+          </div>
+
+        </div>
+
+        <h3>任意改善（やっておくと堅い）</h3>
+        <ul class="plain">
+          <li><b>ログイン API にレート制限。</b> <code>go-chi/httprate</code> を <code>/api/auth/*</code> に噛ませる（例：1 分 10 回）。総当たりと大量ユーザー自動生成の両方を抑えられる。</li>
+          <li><b>プロフィール画像 URL の検証。</b> ユーザーが任意 URL を保存できるため、<code>https</code> スキームと許可ホストに限定して外部トラッキングや不正スキームを防ぐ。</li>
+          <li><b>authMiddleware で DB 照合を 1 回入れる。</b> 退職・削除したユーザーのトークンを即時無効化できる。</li>
+          <li><b>専用ヘルスチェック <code>/api/health</code> の追加。</b> 現状 <code>deploy.sh</code> がデータ取得 API で生死判定しており、DB 障害と API 障害を切り分けられない。</li>
+          <li><b>エラー応答の整形。</b> <code>http.Error(w, err.Error(), 500)</code> が多用され、SQL のエラー文がそのままクライアントに返る。内部情報を隠したメッセージに統一する。</li>
+        </ul>
+      </section>
+
+      <!-- 11 -->
+      <section id="s11">
+        <h2><span class="num">11</span>次アクション候補</h2>
+        <p class="sub">優先度は「デモとして成立するか」と「安全に人に触らせられるか」の 2 軸で並べた。</p>
+        <div class="scroller">
+          <table>
+            <thead><tr><th>#</th><th>アクション</th><th>効果</th><th>規模感</th></tr></thead>
+            <tbody>
+              <tr><td class="nowrap">1</td><td>WOFF アクセストークン検証をサーバー側に実装</td><td>なりすまし遮断。実運用の前提条件</td><td class="nowrap">中</td></tr>
+              <tr><td class="nowrap">2</td><td>投稿の作成 API + 投稿フォーム</td><td>SNS として最低限成立する。いいね・フィード・検索が生きたデータで動く</td><td class="nowrap">中</td></tr>
+              <tr><td class="nowrap">3</td><td>JWT_SECRET 未設定時の起動失敗化 / CORS 限定 / バイナリ追跡解除</td><td>設定事故の予防。いずれも数行</td><td class="nowrap">小</td></tr>
+              <tr><td class="nowrap">4</td><td>README を現状（WOFF 専用）に合わせて更新</td><td>「メールでログインできない」という誤解の解消</td><td class="nowrap">小</td></tr>
+              <tr><td class="nowrap">5</td><td>WOFF ユーザーの部署割り当て導線</td><td>部署ページが実ユーザーで埋まる</td><td class="nowrap">小</td></tr>
+              <tr><td class="nowrap">6</td><td><code>api/main.go</code>（1,097 行）をドメイン別に分割</td><td>編集コストの削減。social / search / feed / auth で 4 分割が目安</td><td class="nowrap">中</td></tr>
+              <tr><td class="nowrap">7</td><td><code>docs/tasks.md</code> でタスク管理を開始</td><td>コミットメッセージが「修正」で埋まる状態の解消</td><td class="nowrap">小</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <footer>
+        docs/overview.html · HEAD a84d0d1 時点のリポジトリ実装より作成 · 2026-08-26
+      </footer>
+
+    </main>
+  </div>
+</div>
