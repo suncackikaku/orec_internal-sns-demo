@@ -29,6 +29,11 @@ services:
     environment:
       DATABASE_URL: postgres://snsuser:snspassword@db:5432/snsdb?sslmode=disable
       PORT: 8080
+      # OIDC（PCブラウザ向けログイン）は WOFF と同じ ClientApp を使うため、
+      # .env の LINE_WORKS_* をそのまま渡して Secret の二重管理を避ける。
+      OIDC_CLIENT_ID: ${LINE_WORKS_CLIENT_ID:-}
+      OIDC_CLIENT_SECRET: ${LINE_WORKS_CLIENT_SECRET:-}
+      OIDC_REDIRECT_URI: ${OIDC_REDIRECT_URI:-https://orec-demo-app.suncac.net/api/auth/oidc/callback}
     ports:
       - "8080:8080"
     volumes:
