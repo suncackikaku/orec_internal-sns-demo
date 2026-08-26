@@ -250,12 +250,19 @@ func (d *DBAuth) GetOIDCUserByEmail(email string) (*auth.User, error) {
 	return &user, nil
 }
 
+// GetUserByWoffID は WOFF で作成されたユーザーのみを引く。
+//
+// auth_provider を限定しているのは、woffAuthHandler が userId を無検証で
+// 受け取っているため（仕様書 9.1 が要求するトークン検証が未実装）。
+// OIDC ユーザーにも woff_id を保存するようになったため、絞らないと
+// OIDC ユーザーを WOFF エンドポイント経由でなりすませてしまう。
+// 恒久対応は WOFF トークンのサーバー側検証。
 func (d *DBAuth) GetUserByWoffID(woffID string) (*auth.User, error) {
 	var user auth.User
 	err := d.db.Get(&user, `
 		SELECT id, display_name, email, primary_department_id 
 		FROM users 
-		WHERE woff_id = $1`, woffID)
+		WHERE woff_id = $1 AND auth_provider = 'woff'`, woffID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, auth.ErrUserNotFound
@@ -263,6 +270,17 @@ func (d *DBAuth) GetUserByWoffID(woffID string) (*auth.User, error) {
 		return nil, err
 	}
 	return &user, nil
+}
+
+// IsWoffIDTaken は指定の woff_id を保持するユーザーが既に居るかを返す。
+func (d *DBAuth) IsWoffIDTaken(woffID string) (bool, error) {
+	var count int
+	err := d.db.Get(&count, `
+		SELECT COUNT(*) FROM users WHERE woff_id = $1`, woffID)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }
 
 func (d *DBAuth) CreateWoffUser(woffID, displayName, domainID, photoUrl string) (*auth.User, error) {
@@ -2163,6 +2181,14 @@ func woffAuthHandler(w http.ResponseWriter, r *http.Request) {
 	user, err := dbAuth.GetUserByWoffID(req.UserID)
 	if err != nil {
 		if err == auth.ErrUserNotFound {
+			// 同じ woff_id を別プロバイダ（OIDC）のユーザーが持っている場合、
+			// 新規作成に進むと UNIQUE 制約違反になる。
+			// なりすまし試行の可能性もあるため明示的に拒否する。
+			if taken, checkErr := dbAuth.IsWoffIDTaken(req.UserID); checkErr == nil && taken {
+				http.Error(w, "この LINE WORKS アカウントは別の方式で登録済みです", http.StatusConflict)
+				return
+			}
+
 			// Create new user with photo URL from WOFF SDK or fallback to LINE WORKS API
 			photoUrl := req.PhotoUrl
 			if photoUrl == "" {

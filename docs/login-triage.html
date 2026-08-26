@@ -1,4 +1,4 @@
-<title>ログイン不具合 切り分けフロー</title>
+<title>ログイン経路の整理と真因</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap">
@@ -18,6 +18,8 @@
     --accent-sf: #E2EFE9;
     --flag:      #B0651A;
     --flag-sf:   #FAEEDF;
+    --crit:      #B3402F;
+    --crit-sf:   #F7E6E2;
 
     --f-display: "Zen Kaku Gothic New", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
     --f-body:    "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
@@ -39,6 +41,8 @@
       --accent-sf: #16302A;
       --flag:      #E0A263;
       --flag-sf:   #32261A;
+      --crit:      #E8836F;
+      --crit-sf:   #331F1B;
     }
   }
 
@@ -56,6 +60,8 @@
     --accent-sf: #16302A;
     --flag:      #E0A263;
     --flag-sf:   #32261A;
+    --crit:      #E8836F;
+    --crit-sf:   #331F1B;
   }
 
   * { box-sizing: border-box; }
@@ -92,40 +98,45 @@
     margin: 0 0 6px; display: flex; align-items: baseline; gap: 11px;
   }
   h2 .num { font-family: var(--f-mono); font-size: 12px; font-weight: 400; color: var(--accent); }
+  h3 {
+    font-family: var(--f-display); font-weight: 700; font-size: 14.5px;
+    letter-spacing: .02em; margin: 30px 0 8px;
+  }
   .sub { color: var(--muted); font-size: 13.5px; max-width: 66ch; margin: 0 0 20px; }
   p { max-width: 66ch; }
 
-  /* 図 */
+  .verdict {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-sf);
+    padding: 16px 20px;
+    margin: 4px 0 8px;
+  }
+  .verdict p { margin: 0; color: var(--accent-2); font-size: 15px; max-width: 68ch; }
+  .verdict strong { font-family: var(--f-display); }
+
   figure { margin: 0; }
   .fig-wrap {
-    overflow-x: auto;
-    border: 1px solid var(--line);
-    background: var(--surface);
-    padding: 24px 20px;
+    overflow-x: auto; border: 1px solid var(--line);
+    background: var(--surface); padding: 24px 20px;
   }
   svg { max-width: 100%; height: auto; display: block; margin: 0 auto; color: var(--ink); }
-  figcaption { font-size: 12.5px; color: var(--muted); margin-top: 10px; max-width: 70ch; }
+  figcaption { font-size: 12.5px; color: var(--muted); margin-top: 10px; max-width: 72ch; }
 
   svg .node      { fill: var(--surface); stroke: var(--line-2); }
-  svg .node-lead { fill: var(--surface-2); stroke: var(--line-2); }
-  svg .node-flag { fill: var(--flag-sf); stroke: var(--flag); }
-  svg .t         { font-family: var(--f-body); font-size: 12.5px; font-weight: 700; fill: var(--ink); }
-  svg .s         { font-family: var(--f-body); font-size: 10.5px; fill: var(--muted); }
-  svg .s-flag    { font-family: var(--f-body); font-size: 10.5px; fill: var(--flag); font-weight: 700; }
-  svg .t-flag    { font-family: var(--f-body); font-size: 12.5px; font-weight: 700; fill: var(--flag); }
+  svg .node-ok   { fill: var(--accent-sf); stroke: var(--accent); }
+  svg .node-ng   { fill: var(--crit-sf); stroke: var(--crit); }
+  svg .t         { font-family: var(--f-body); font-size: 12px; font-weight: 700; fill: var(--ink); }
+  svg .t-ok      { font-family: var(--f-body); font-size: 12px; font-weight: 700; fill: var(--accent-2); }
+  svg .t-ng      { font-family: var(--f-body); font-size: 12px; font-weight: 700; fill: var(--crit); }
+  svg .s         { font-family: var(--f-mono); font-size: 9.5px; fill: var(--muted); }
+  svg .s-ok      { font-family: var(--f-mono); font-size: 9.5px; fill: var(--accent-2); }
+  svg .s-ng      { font-family: var(--f-mono); font-size: 9.5px; fill: var(--crit); }
   svg .hdr       { font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; fill: var(--muted); }
   svg .wire      { stroke: var(--line-2); fill: none; }
+  svg .wire-ng   { stroke: var(--crit); fill: none; }
 
-  /* コピペ枠 */
-  .copy {
-    border: 1px solid var(--line); background: var(--surface);
-    padding: 16px 18px; margin: 10px 0 4px;
-    font-size: 14px; line-height: 1.95; white-space: pre-wrap;
-  }
-
-  /* 表 */
   .scroller { overflow-x: auto; border: 1px solid var(--line); background: var(--surface); margin: 6px 0; }
-  table { width: 100%; border-collapse: collapse; font-size: 13.5px; line-height: 1.7; min-width: 620px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; line-height: 1.7; min-width: 640px; }
   th {
     text-align: left; font-family: var(--f-display); font-weight: 700;
     font-size: 11.5px; letter-spacing: .09em; color: var(--muted); text-transform: uppercase;
@@ -133,14 +144,17 @@
   }
   td { padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
   tr:last-child td { border-bottom: none; }
+  .nowrap { white-space: nowrap; }
   code { font-family: var(--f-mono); font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border-radius: 2px; }
 
   .chip {
     display: inline-block; font-family: var(--f-mono); font-size: 10.5px;
     letter-spacing: .06em; padding: 2px 7px; border-radius: 2px; white-space: nowrap;
   }
-  .c-none { background: var(--accent-sf); color: var(--accent-2); }
-  .c-yes  { background: var(--flag-sf); color: var(--flag); }
+  .c-ok   { background: var(--accent-sf); color: var(--accent-2); }
+  .c-ng   { background: var(--crit-sf); color: var(--crit); }
+  .c-hold { background: var(--flag-sf); color: var(--flag); }
+  .c-rec  { background: var(--accent-sf); color: var(--accent-2); }
 
   pre.err {
     font-family: var(--f-mono); font-size: 12.5px;
@@ -149,8 +163,14 @@
   }
 
   ul.plain { padding-left: 0; list-style: none; margin: 8px 0; display: grid; gap: 7px; }
-  ul.plain li { padding-left: 18px; position: relative; font-size: 14px; color: var(--ink-2); max-width: 68ch; }
+  ul.plain li { padding-left: 18px; position: relative; font-size: 14px; color: var(--ink-2); max-width: 70ch; }
   ul.plain li::before { content: ""; position: absolute; left: 2px; top: .72em; width: 6px; height: 1px; background: var(--accent); }
+
+  .copy {
+    border: 1px solid var(--line); background: var(--surface);
+    padding: 16px 18px; margin: 10px 0 4px;
+    font-size: 14px; line-height: 1.95; white-space: pre-wrap;
+  }
 
   footer {
     margin-top: 44px; padding-top: 16px; border-top: 1px solid var(--line);
@@ -161,189 +181,249 @@
 <div class="shell">
 
   <header class="masthead">
-    <p class="eyebrow">Triage / 2026-08-26</p>
-    <h1>ログイン不具合 切り分けフロー</h1>
-    <p class="lede">先方社屋でログインできなかった件。「スマホの LINE WORKS アプリ内から開いたか、PC のブラウザから開いたか」の一問で、対応が当社だけで完結するか、先方に作業を依頼することになるかが決まります。</p>
+    <p class="eyebrow">Resolved / 2026-08-26</p>
+    <h1>ログイン経路の整理と真因</h1>
+    <p class="lede">先方社屋でログインできなかった件の調査記録。原因はコードではなく、アプリを開く URL でした。あわせて確定したログイン 3 経路の条件と、今日修正した不具合をまとめます。</p>
   </header>
 
   <section>
-    <h2><span class="num">01</span>切り分けフロー</h2>
-    <p class="sub">先方への確認は 1 回で済みます。左端が回答、中央が診断、右端が対応です。</p>
+    <h2><span class="num">01</span>真因</h2>
+
+    <div class="verdict">
+      <p><strong>WOFF アプリは専用の「WOFF URL」から開かないと認証できない。</strong> サイト URL（<code>orec-demo-app.suncac.net</code>）を LINE WORKS アプリ内ブラウザで直接開いても、WOFF セッションが確立されないため必ず失敗します。</p>
+    </div>
+
+    <p style="margin-top:22px">当初はテナントの違いや実装漏れを疑いましたが、いずれも誤りでした。同じ端末・同じアカウントで、WOFF URL から開けば成功し、サイト URL から開けば失敗します。差は URL だけです。</p>
+
+    <h3>なぜ URL で変わるのか</h3>
 
     <figure>
       <div class="fig-wrap">
-        <svg viewBox="0 0 940 556" role="img" aria-label="先方への確認結果から対応を決める切り分けフロー。4分岐のうち、先方に作業依頼が必要なのはスマホのLINE WORKSアプリ内でボタンが押せなかった場合の1本だけ。">
+        <svg viewBox="0 0 940 300" role="img" aria-label="WOFF URL から開くと LINE WORKS の認可を経由してアクセストークンを受け取るためセッションが確立するが、サイト URL を直接開くとその往復が無いためトークンが無く getProfile が失敗する、という比較図。">
           <defs>
             <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
               <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--line-2)"/>
             </marker>
+            <marker id="ah-ng" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--crit)"/>
+            </marker>
           </defs>
 
-          <!-- 列見出し -->
-          <text class="hdr" x="140" y="98">先方の回答</text>
-          <text class="hdr" x="366" y="98">診断</text>
-          <text class="hdr" x="662" y="98">対応</text>
+          <text class="hdr" x="20" y="28">開いた URL</text>
+          <text class="hdr" x="238" y="28">LINE WORKS の認可</text>
+          <text class="hdr" x="470" y="28">アプリに到達した状態</text>
+          <text class="hdr" x="700" y="28">woff.getProfile()</text>
 
-          <!-- 起点 -->
-          <rect class="node-lead" x="80" y="22" width="330" height="50" rx="3"/>
-          <text class="t" x="98" y="45">先方に確認</text>
-          <text class="s" x="98" y="62">「どこから開きましたか？」</text>
+          <!-- ===== 成功ルート ===== -->
+          <rect class="node-ok" x="20" y="48" width="182" height="54" rx="3"/>
+          <text class="t-ok" x="34" y="70">WOFF URL</text>
+          <text class="s-ok" x="34" y="88">woff.worksmobile.com/woff/…</text>
 
-          <!-- 縦の背骨 -->
-          <path class="wire" d="M 110 72 L 110 410"/>
+          <path class="wire" d="M 204 75 L 232 75" marker-end="url(#ah)"/>
 
-          <!-- ===== 行1: PCブラウザ ===== -->
-          <path class="wire" d="M 110 146 L 134 146" marker-end="url(#ah)"/>
-          <rect class="node" x="140" y="118" width="190" height="56" rx="3"/>
-          <text class="t" x="156" y="144">PC のブラウザ</text>
-          <text class="s" x="156" y="161">Chrome / Edge など</text>
+          <rect class="node" x="238" y="48" width="196" height="54" rx="3"/>
+          <text class="t" x="252" y="70">authorize を経由</text>
+          <text class="s" x="252" y="88">#access_token を付けて返す</text>
 
-          <path class="wire" d="M 330 146 L 360 146" marker-end="url(#ah)"/>
-          <rect class="node" x="366" y="118" width="260" height="56" rx="3"/>
-          <text class="t" x="382" y="144">woff.login() の未実装</text>
-          <text class="s" x="382" y="161">テナントとは無関係。再現済み</text>
+          <path class="wire" d="M 436 75 L 464 75" marker-end="url(#ah)"/>
 
-          <path class="wire" d="M 626 146 L 656 146" marker-end="url(#ah)"/>
-          <rect class="node" x="662" y="118" width="258" height="56" rx="3"/>
-          <text class="t" x="678" y="144">当社でコード修正</text>
-          <text class="s" x="678" y="161">先方の作業なし・数行で完了</text>
+          <rect class="node-ok" x="470" y="48" width="206" height="54" rx="3"/>
+          <text class="t-ok" x="484" y="70">トークンを保持</text>
+          <text class="s-ok" x="484" y="88">init() が取り込みセッション確立</text>
 
-          <!-- ===== 行2: スマホ／押せない ===== -->
-          <path class="wire" d="M 110 234 L 134 234" marker-end="url(#ah)"/>
-          <rect class="node" x="140" y="206" width="190" height="56" rx="3"/>
-          <text class="t" x="156" y="230">スマホのアプリ内</text>
-          <text class="s" x="156" y="248">ボタンが押せなかった</text>
+          <path class="wire" d="M 678 75 L 706 75" marker-end="url(#ah)"/>
 
-          <path class="wire" d="M 330 234 L 360 234" marker-end="url(#ah)"/>
-          <rect class="node-flag" x="366" y="206" width="260" height="56" rx="3"/>
-          <text class="t-flag" x="382" y="230">woff.init() が失敗</text>
-          <text class="s-flag" x="382" y="248">別テナントのため利用できない</text>
+          <rect class="node-ok" x="712" y="48" width="208" height="54" rx="3"/>
+          <text class="t-ok" x="726" y="70">成功</text>
+          <text class="s-ok" x="726" y="88">プロフィールを取得できる</text>
 
-          <path class="wire" d="M 626 234 L 656 234" marker-end="url(#ah)"/>
-          <rect class="node-flag" x="662" y="206" width="258" height="56" rx="3"/>
-          <text class="t-flag" x="678" y="230">先方で WOFF アプリ登録</text>
-          <text class="s-flag" x="678" y="248">先方の作業あり・唯一のルート</text>
+          <!-- ===== 失敗ルート ===== -->
+          <rect class="node-ng" x="20" y="188" width="182" height="54" rx="3"/>
+          <text class="t-ng" x="34" y="210">サイト URL</text>
+          <text class="s-ng" x="34" y="228">orec-demo-app.suncac.net</text>
 
-          <!-- ===== 行3: スマホ／押せたがエラー ===== -->
-          <path class="wire" d="M 110 322 L 134 322" marker-end="url(#ah)"/>
-          <rect class="node" x="140" y="294" width="190" height="56" rx="3"/>
-          <text class="t" x="156" y="318">スマホのアプリ内</text>
-          <text class="s" x="156" y="336">押せたがエラーが出た</text>
+          <!-- 認可を飛ばす：破線で「往復が無い」ことを示す -->
+          <path class="wire-ng" d="M 204 215 L 464 215" stroke-dasharray="5 4" marker-end="url(#ah-ng)"/>
+          <text class="s-ng" x="334" y="207" text-anchor="middle">この往復が無い</text>
 
-          <path class="wire" d="M 330 322 L 360 322" marker-end="url(#ah)"/>
-          <rect class="node" x="366" y="294" width="260" height="56" rx="3"/>
-          <text class="t" x="382" y="318">未特定</text>
-          <text class="s" x="382" y="336">エラー文言で原因が分かれる</text>
+          <rect class="node" x="238" y="188" width="196" height="54" rx="3" fill="none" stroke="var(--line-2)" stroke-dasharray="4 4"/>
+          <text class="s" x="336" y="220" text-anchor="middle">経由しない</text>
 
-          <path class="wire" d="M 626 322 L 656 322" marker-end="url(#ah)"/>
-          <rect class="node" x="662" y="294" width="258" height="56" rx="3"/>
-          <text class="t" x="678" y="318">エラー文言を取得して再判定</text>
-          <text class="s" x="678" y="336">先方には画面の確認のみ依頼</text>
+          <rect class="node-ng" x="470" y="188" width="206" height="54" rx="3"/>
+          <text class="t-ng" x="484" y="210">トークンが無い</text>
+          <text class="s-ng" x="484" y="228">init() は成功するが空のまま</text>
 
-          <!-- ===== 行4: 不明 ===== -->
-          <path class="wire" d="M 110 410 L 134 410" marker-end="url(#ah)"/>
-          <rect class="node" x="140" y="382" width="190" height="56" rx="3"/>
-          <text class="t" x="156" y="406">不明・覚えていない</text>
-          <text class="s" x="156" y="424">確認が取れない</text>
+          <path class="wire-ng" d="M 678 215 L 706 215" marker-end="url(#ah-ng)"/>
 
-          <path class="wire" d="M 330 410 L 360 410" marker-end="url(#ah)"/>
-          <rect class="node" x="366" y="382" width="260" height="56" rx="3"/>
-          <text class="t" x="382" y="406">判定不能</text>
-          <text class="s" x="382" y="424">先に検証を進めてもらう</text>
+          <rect class="node-ng" x="712" y="188" width="208" height="54" rx="3"/>
+          <text class="t-ng" x="726" y="210">失敗</text>
+          <text class="s-ng" x="726" y="228">Need access_token …</text>
 
-          <path class="wire" d="M 626 410 L 656 410" marker-end="url(#ah)"/>
-          <rect class="node" x="662" y="382" width="258" height="56" rx="3"/>
-          <text class="t" x="678" y="406">ID/PASSWORD で先に検証</text>
-          <text class="s" x="678" y="424">並行して woff.login() を実装</text>
-
-          <!-- 共通の足元 -->
-          <path class="wire" d="M 110 410 L 110 492 L 134 492" marker-end="url(#ah)"/>
-          <rect x="140" y="466" width="780" height="52" rx="3" fill="var(--accent-sf)" stroke="var(--accent)" stroke-dasharray="4 3"/>
-          <text class="t" x="158" y="490" fill="var(--accent-2)">どの分岐でも共通：ID/PASSWORD ログインは本番で稼働中</text>
-          <text class="s" x="158" y="508" fill="var(--accent-2)">demo@orec.co.jp が利用可能。LINE WORKS の解決を待たずにデモを進められる</text>
+          <line x1="20" y1="145" x2="920" y2="145" stroke="var(--line)"/>
         </svg>
       </div>
-      <figcaption>4 つの分岐のうち、先方に作業が発生するのはオレンジの 1 本だけです。他の 3 本は当社側の対応で完結します。だからこそ、依頼を出す前に確認が必要です。</figcaption>
+      <figcaption><code>woff.init()</code> はどちらの経路でも成功します。そのため「初期化は通っているのにプロフィールが取れない」という分かりにくい症状になり、原因の切り分けが遅れました。</figcaption>
     </figure>
+
+    <h3>実際に出るエラー</h3>
+    <pre class="err">Need access_token for api call, Please login first</pre>
+    <p>このエラーはテナントに関係なく、WOFF URL を経由していないすべての環境で発生します。当社テナント・当社アカウント・当社の PC でも同じです。</p>
   </section>
 
   <section>
-    <h2><span class="num">02</span>先方への確認文</h2>
-    <p class="sub">この 3 点だけ聞けば分岐が確定します。そのままコピーして使えます。</p>
+    <h2><span class="num">02</span>ログイン 3 経路</h2>
+    <p class="sub">本番環境で実測した結果です。<span class="chip c-ok">検証済</span> は実際にログイン完了まで確認したものを指します。</p>
 
-    <div class="copy">先日ご検証いただいた際のログインについて、3点確認させてください。
-
-1. アプリを開いたのは、スマートフォンの LINE WORKS アプリの中からでしょうか。
-   それとも PC のブラウザ（Chrome / Edge など）からでしょうか。
-
-2. 「LINE WORKSでログイン (スマホ)」のボタンは押せる状態でしたか。
-   （グレーアウトして押せなかった場合は、その旨をお知らせください）
-
-3. エラーメッセージが表示された場合、文言をそのままお知らせください。
-   画面のスクリーンショットでも構いません。
-
-なお、画面下部の「ID/PASSWORDでログイン」からは現在もログイン可能です。
-LINE WORKS 連携の調査と並行して、そちらでご検証を進めていただけます。
-アカウント情報は別途お送りします。</div>
-
-    <p style="margin-top:18px">デモアカウントの認証情報は、このメールとは別の経路で渡してください。</p>
-  </section>
-
-  <section>
-    <h2><span class="num">03</span>分岐ごとの作業内容</h2>
     <div class="scroller">
       <table>
         <thead>
-          <tr><th>分岐</th><th>先方の作業</th><th>当社の作業</th><th>所要</th></tr>
+          <tr><th>経路</th><th>動作条件</th><th>PC ブラウザ</th><th>スマホブラウザ</th><th>アプリ内</th></tr>
         </thead>
         <tbody>
           <tr>
-            <td>PC のブラウザ</td>
-            <td><span class="chip c-none">なし</span></td>
-            <td><code>woff.isLoggedIn()</code> と <code>woff.login()</code> の分岐を追加し、ログイン後に <code>woff.init()</code> を再実行</td>
-            <td class="nowrap">半日</td>
+            <td><b>OIDC</b><br><span class="chip c-rec">推奨</span></td>
+            <td>条件なし。サイト URL から開けばよい</td>
+            <td><span class="chip c-ok">検証済</span></td>
+            <td><span class="chip c-ok">検証済</span></td>
+            <td><span class="chip c-ok">検証済</span></td>
           </tr>
           <tr>
-            <td>スマホ／押せなかった</td>
-            <td><span class="chip c-yes">あり</span> 自社テナントで WOFF アプリを登録し、WOFF ID を共有</td>
-            <td>受け取った ID を <code>VITE_WOFF_ID</code> に設定して再ビルド</td>
-            <td class="nowrap">先方次第</td>
+            <td><b>WOFF</b></td>
+            <td>LINE WORKS アプリ内 <b>かつ</b> WOFF URL から開く</td>
+            <td><span class="chip c-ng">不可</span></td>
+            <td><span class="chip c-ng">不可</span></td>
+            <td><span class="chip c-ok">検証済</span></td>
           </tr>
           <tr>
-            <td>スマホ／エラー</td>
-            <td><span class="chip c-none">確認のみ</span></td>
-            <td>エラー文言から再判定。<code>woff.init()</code> の失敗理由を画面に出す改修も検討</td>
-            <td class="nowrap">要調査</td>
-          </tr>
-          <tr>
-            <td>不明</td>
-            <td><span class="chip c-none">確認のみ</span></td>
-            <td><code>woff.login()</code> を先に実装（どの分岐でも必要になる）</td>
-            <td class="nowrap">半日</td>
+            <td><b>ID/PASSWORD</b></td>
+            <td>条件なし</td>
+            <td><span class="chip c-ok">検証済</span></td>
+            <td><span class="chip c-ok">検証済</span></td>
+            <td><span class="chip c-ok">検証済</span></td>
           </tr>
         </tbody>
       </table>
     </div>
-    <p style="margin-top:16px"><code>woff.login()</code> の実装は、分岐 2 が正解だった場合でも無駄になりません。PC ブラウザ対応として必要な修正なので、確認を待つ間に着手して問題ありません。</p>
+
+    <h3>OIDC を推奨する理由</h3>
+    <ul class="plain">
+      <li><b>全環境で動く。</b> WOFF が動く場面は OIDC でも動きますが、逆は成立しません。</li>
+      <li><b>案内する URL が 1 つで済む。</b> WOFF URL の配布・管理が不要になり、今日と同じ事故が起きません。</li>
+      <li><b>Bot 通知の宛先も取れる。</b> <code>id_token</code> の <code>sub</code> は WOFF の <code>userId</code> と同じ LINE WORKS ユーザー ID です。<code>users.woff_id</code> に保存する対応を入れました。</li>
+      <li><b>先方展開が軽い。</b> WOFF アプリの登録ではなく ClientApp 1 つで足りる見込みです（検証中）。</li>
+    </ul>
+    <p>WOFF が必須になるのは、アプリ内 UI 連携（Scan QR、アプリ内ウィンドウ制御など）を使う場合だけです。Bot からのトークルーム通知はサーバー側 API の機能なので、WOFF の有無とは無関係です。</p>
   </section>
 
   <section>
-    <h2><span class="num">04</span>診断の根拠</h2>
-    <p class="sub">本番環境（<code>orec-demo-app.suncac.net</code>）で実際に再現した結果です。</p>
+    <h2><span class="num">03</span>今日修正した不具合</h2>
+    <p class="sub">真因の調査中に見つかったものを含みます。すべて本番に反映済みです。</p>
+    <div class="scroller">
+      <table>
+        <thead><tr><th>不具合</th><th>症状</th><th>対応</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="nowrap">OIDC が無効</td>
+            <td><code>503 OIDC is not configured</code>。環境変数が未設定で、フロントに入口ボタンも無かった</td>
+            <td><code>docker-compose.yml</code> で既存の <code>LINE_WORKS_*</code> を <code>OIDC_*</code> に渡し、ログイン画面にボタンを追加</td>
+          </tr>
+          <tr>
+            <td class="nowrap"><code>expires_in</code> の型</td>
+            <td>トークン交換で <code>cannot unmarshal string into Go struct field</code></td>
+            <td>数値・文字列の両方を受ける <code>FlexInt</code> 型を追加</td>
+          </tr>
+          <tr>
+            <td class="nowrap">API スコープ不足</td>
+            <td><code>FORBIDDEN / has not permission api scope</code></td>
+            <td><code>users/me</code> を呼ばず <code>id_token</code> のクレームから読むよう変更。追加権限が不要になった</td>
+          </tr>
+          <tr>
+            <td class="nowrap">再ログインで 500</td>
+            <td>照合が <code>auth_provider = 'local'</code> 限定で、2 回目以降ユーザーが見つからず再作成 → UNIQUE 制約違反</td>
+            <td><code>GetOIDCUserByEmail</code> を追加</td>
+          </tr>
+          <tr>
+            <td class="nowrap">localhost へ戻る</td>
+            <td>認証後 <code>http://localhost:5173</code> にリダイレクト</td>
+            <td><code>FRONTEND_URL</code> を設定</td>
+          </tr>
+          <tr>
+            <td class="nowrap">セッションが切れる</td>
+            <td>ID/PASSWORD でログインしても再読み込みでログアウト（復元処理が <code>woff.init()</code> の中にあった）</td>
+            <td>WOFF の成否と切り離した</td>
+          </tr>
+          <tr>
+            <td class="nowrap">デプロイが反映されない</td>
+            <td><code>index.html</code> に <code>Cache-Control</code> が無く、古い画面が表示され続ける</td>
+            <td><code>no-store</code> を付与。ハッシュ付き <code>assets</code> は長期キャッシュに</td>
+          </tr>
+          <tr>
+            <td class="nowrap">Bot 宛先の欠落</td>
+            <td>OIDC の <code>sub</code> を保存しておらず、Bot 通知の宛先が分からない</td>
+            <td><code>users.woff_id</code> に保存。既存ユーザーは次回ログインで補完</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
 
-    <p>当社の PC ブラウザから「LINE WORKSでログイン (スマホ)」を押すと、次のエラーが表示されます。</p>
-    <pre class="err">Need access_token for api call, Please login first</pre>
+  <section>
+    <h2><span class="num">04</span>先方への確認と残作業</h2>
 
+    <h3>検証を依頼中</h3>
+    <p>先方に、自社の LINE WORKS アカウントで OIDC ログインを試してもらっています。<b>テナント制約の有無がこれで確定します。</b></p>
+    <div class="scroller">
+      <table>
+        <thead><tr><th>結果</th><th>意味</th><th>対応</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="chip c-ok">成功</span></td>
+            <td>テナント制約なし</td>
+            <td>先方での登録は不要。OIDC 一本で完結。WOFF ボタンを撤去する</td>
+          </tr>
+          <tr>
+            <td><span class="chip c-ng">失敗</span></td>
+            <td>テナント制約あり</td>
+            <td>先方テナントでの ClientApp 登録を依頼。WOFF URL 配布も選択肢に残す</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-top:16px">検証で先方のアカウントがこちらの DB に作成されます（表示名とメールアドレス、部署は未設定）。不要になれば管理画面から削除できます。</p>
+
+    <h3>未対応の課題</h3>
     <ul class="plain">
-      <li>これは <b>当社のテナント環境で</b> 出たエラーです。テナントの違いとは無関係に、PC ブラウザからであれば誰が押しても同じ結果になります。</li>
-      <li>LINE WORKS 公式ドキュメントに <code>woff.login()</code> は「外部ブラウザ環境で WOFF アプリを実行する際に必須」と明記されており、実行後は <code>woff.init()</code> の再実行が必要とされています。現在のコードはこの手順を踏んでいません。</li>
-      <li>一方、スマホの LINE WORKS アプリ内であればログイン済みのため <code>getProfile()</code> は通ります。そこで失敗する場合は、テナントの問題である可能性が高くなります。</li>
-      <li>ログイン画面には ID/PASSWORD フォームが既に存在し、<code>demo@orec.co.jp</code> のデモアカウントも投入済みです（2026-06-16 のコミットで追加、本番反映済み）。</li>
+      <li><b>トークンが URL クエリに載る。</b> OIDC コールバックが <code>?token=</code> でフロントに渡すため、nginx と Cloudflare のアクセスログに JWT が記録されます。ブラウザ履歴からは除去済みですが、本来は httpOnly Cookie で渡すべきところです。認証フロー全体の作り替えになるため未着手。</li>
+      <li><b>WOFF と OIDC で同一人物のレコードが二重化する。</b> WOFF は <code>woff_id</code>、OIDC は <code>email</code> で照合しており別ユーザーとして扱われます。OIDC 一本に統一すれば発生しません。</li>
+      <li><b>WOFF ボタンの去就。</b> 先方の検証結果を待って判断します。撤去する場合もコードと API は残し、入口だけ外す方針です。</li>
     </ul>
   </section>
 
+  <section>
+    <h2><span class="num">05</span>先方への案内文</h2>
+    <p class="sub">検証依頼の文面です。ボタン名を変更したため、以前の案内から差し替えが必要な場合に使えます。</p>
+
+    <div class="copy">お手数ですが、下記の手順でログインをお試しいただけますでしょうか。
+
+1. https://orec-demo-app.suncac.net/login を開く
+   （PC・スマートフォンのどちらでも、ブラウザは問いません）
+
+2. 一番上の「LINE WORKS アカウントでログイン」を押す
+
+3. LINE WORKS のログイン画面で、御社のアカウントでログイン
+
+ログイン後、部署選択画面またはトップページが表示されれば成功です。
+エラーが表示された場合は、その文言をそのままお知らせください。
+
+※ 検証にあたり、御社アカウントの表示名とメールアドレスが
+　 デモ環境にユーザーとして登録されます。不要になり次第削除いたします。
+
+※ 2番目の「LINE WORKS アプリで続ける」は専用リンクからのみ動作するため、
+　 今回は使用しません。</div>
+  </section>
+
   <footer>
-    docs/login-triage.html · feature/local-dev の実装と本番環境の実測に基づく · 2026-08-26
+    docs/login-triage.html · 本番環境（orec-demo-app.suncac.net）での実測に基づく · 2026-08-26
   </footer>
 
 </div>
