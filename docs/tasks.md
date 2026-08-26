@@ -33,6 +33,11 @@
 
 ### 保守
 - [ ] `api/main.go`（1,097行）をドメイン別に分割（auth / social / search / feed で4分割が目安）
+- [ ] フロントエンドの依存脆弱性 8 件（low 1 / moderate 4 / high 3）を確認・対応
+      - 内訳未確認。`cd frontend && npm audit` で確認する
+      - まず `npm audit fix`（破壊的変更なし）で減る分を潰し、残りを個別に判断
+      - `npm audit fix --force` は vite / tailwind のメジャー更新を伴う可能性があるため、ビルド確認とセットで
+      - dev 依存のみに閉じる脆弱性（vite/esbuild 系など）は本番バンドルに影響しないため優先度を下げてよい
 
 ## 実装中
 - [ ] （なし）
